@@ -1,0 +1,32 @@
+# Titlar att filtrera bort ur schemat (build_schedule.py)
+#
+# - En titel per rad. Tomma rader ignoreras.
+# - En rad är en kommentar bara om # står ensamt eller följs av mellanslag.
+#   En titel som börjar med en hashtag (#allakansyiläder ...) funkar därför direkt.
+#   Behöver du en titel som börjar med "# " (brädgård + mellanslag): skriv \# först.
+# - Matchning är skiftlägesokänslig och struntar i extra blanksteg.
+# - * och ? fungerar som jokertecken:
+#     Forum Vulgaris, marknadens hjärta   -> exakt titel
+#     *marknad*                           -> alla titlar som innehåller "marknad"
+#
+# Ändra här och kör om:  python build_schedule.py
+# (datafilen rörs inte – inget behöver hämtas om)
+
+# --- Heldagsöppet / platsen i sig (aktiva som standard) ---
+Visby domkyrka Sankta Maria
+Forum Vulgaris, marknadens hjärta
+
+# --- Långa, återkommande programpunkter – avkommentera för att dölja ---
+Drakens Näste
+Gantarnas läger
+Hantverkshörna
+Historisk sjukamp
+M.P. Bagpipes, säckpipor från medeltid till nutid
+The Witch’s Hut – A magical escape room
+#allakansyiläder Sy dina egna skor!
+Drop in: Snoddcafé
+GÖR DINA EGNA NATURLIGA HUDVÅRDSPRODUKTER
+GÖR DIN EGEN TVÅL FRÅN GRUNDEN
+Naturliga skäggvårdsprodukter
+Skokurs Sy medeltida skor
+Mat och dryck i medeltidens Visby

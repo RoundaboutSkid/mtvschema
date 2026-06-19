@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Node / Cloudflare Wrangler (i worker/)
+node_modules/
+.wrangler/
+.dev.vars
+*.log
+
+# Genererade Excel-filer (byggs om av build_schedule.py)
+medeltidsveckan_output/*.xlsx
+
+# Råa skrap-/debug-dumpar (inte del av verktyget)
+medeltidsveckan_output/programme.html
+medeltidsveckan_output/theme_scripts.js
+medeltidsveckan_output/one_event.json
+medeltidsveckan_output/ev_*.json
+
+# macOS
+.DS_Store
