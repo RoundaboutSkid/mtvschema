@@ -223,6 +223,13 @@ section.day.empty { display:none; }
 .modal .m-btn.fav.on { background:#fff7e0; border-color:#e6b400; color:#7a5b00; }
 .modal .m-btn.bought.on { background:#e8f8ee; border-color:#37b86e; color:#1b6b3c; }
 .modal .m-btn.hide.on { background:#fdecea; border-color:#e0796f; color:#8a2b1f; }
+#hidedlg.modal-overlay { z-index:80; }
+.modal.hidedlg { max-width:430px; }
+.modal.hidedlg .hd-msg { color:var(--ink); font-size:.95rem; line-height:1.5; margin:8px 0 2px; }
+.modal.hidedlg .hd-msg b { font-weight:700; }
+.modal.hidedlg .m-actions { margin-top:18px; }
+.modal .m-btn.danger { background:#b3261e; border-color:#b3261e; color:#fff; }
+.modal .m-btn.danger:hover { background:#8a1c16; border-color:#8a1c16; }
 .modal .m-btn[hidden] { display:none; }
 .modal a.m-btn { text-decoration:none; }
 .modal.sub .sub-url { display:flex; gap:8px; margin:14px 0 4px; }
@@ -324,7 +331,7 @@ SCRIPT_JS = r"""
     const revealHidden = showHidden && showHidden.checked;
     let visible = 0, hiddenTotal = 0;
     for (const el of events) {
-      const isHid = window.MV && window.MV.isHidden(el.dataset.id);
+      const isHid = window.MV && window.MV.isHiddenEl(el);
       if (isHid) hiddenTotal++;
       const okCat = activeCats.has(el.dataset.cat);
       const okVenue = activeVenues.has(el.dataset.venue);
@@ -518,9 +525,7 @@ MODAL_JS = r"""
   mBought.addEventListener('click', () => { if (window.MV && currentId) window.MV.toggleBought(currentId); });
   mHide.addEventListener('click', () => {
     if (!window.MV || !currentId) return;
-    const wasHidden = window.MV.isHidden(currentId);
-    window.MV.toggleHide(currentId);
-    if (!wasHidden) close();   // just hid it – no point keeping the dialog open
+    window.MV.requestHide(currentId, { onHidden: close });
   });
   if (window.MV) window.MV.onChange(refreshActions);
 })();
@@ -781,6 +786,65 @@ SUBSCRIBE_HTML = (
     "</div></div>"
 )
 
+HIDE_DIALOG_HTML = (
+    "<div id='hidedlg' class='modal-overlay' hidden>"
+    "<div class='modal hidedlg' role='dialog' aria-modal='true' aria-labelledby='hd-title'>"
+    "<button class='modal-close' id='hd-x' aria-label='Avbryt' title='Avbryt'>×</button>"
+    "<h3 id='hd-title'>Dölj event</h3>"
+    "<div class='hd-msg' id='hd-msg'></div>"
+    "<div class='m-actions'>"
+    "<button type='button' class='m-btn danger' id='hd-all'></button>"
+    "<button type='button' class='m-btn' id='hd-one'>Bara den här</button>"
+    "<button type='button' class='m-btn' id='hd-cancel'>Avbryt</button>"
+    "</div>"
+    "</div></div>"
+)
+
+HIDE_JS = r"""
+(function () {
+  const dlg = document.getElementById('hidedlg');
+  if (!dlg) return;
+  const titleEl = document.getElementById('hd-title');
+  const msgEl = document.getElementById('hd-msg');
+  const allBtn = document.getElementById('hd-all');
+  const oneBtn = document.getElementById('hd-one');
+  const cancelBtn = document.getElementById('hd-cancel');
+  const xBtn = document.getElementById('hd-x');
+  let cb = {};
+  function close() { dlg.hidden = true; cb = {}; }
+  function fire(name) { const fn = cb[name]; close(); if (fn) fn(); }
+  function open(opts) {
+    cb = opts || {};
+    const n = opts.count || 1;
+    const t = opts.title || 'det här eventet';
+    if (opts.mode === 'restore') {
+      titleEl.textContent = 'Visa dolt event igen';
+      msgEl.innerHTML = '”<b class="hd-t"></b>” är dold på <b>' + n + '</b> platser i schemat.';
+      allBtn.textContent = 'Visa alla ' + n;
+      allBtn.classList.remove('danger');
+      oneBtn.hidden = true;
+    } else {
+      titleEl.textContent = 'Dölj event';
+      msgEl.innerHTML = '”<b class="hd-t"></b>” förekommer <b>' + n +
+        '</b> gånger. Vill du dölja alla, eller bara den här?';
+      allBtn.textContent = 'Dölj alla ' + n;
+      allBtn.classList.add('danger');
+      oneBtn.hidden = false;
+    }
+    msgEl.querySelector('.hd-t').textContent = t;
+    dlg.hidden = false;
+    allBtn.focus();
+  }
+  allBtn.addEventListener('click', () => fire('onAll'));
+  oneBtn.addEventListener('click', () => fire('onOne'));
+  cancelBtn.addEventListener('click', () => fire('onCancel'));
+  if (xBtn) xBtn.addEventListener('click', () => fire('onCancel'));
+  dlg.addEventListener('click', ev => { if (ev.target === dlg) fire('onCancel'); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !dlg.hidden) fire('onCancel'); });
+  window.MVHIDE = { open: open, close: close };
+})();
+"""
+
 SYNC_JS = r"""
 (function () {
   const cfg = (typeof window !== 'undefined' && window.MV_CFG) || {};
@@ -879,26 +943,33 @@ STATE_JS = r"""
   const FAV_KEY = 'mv_fav_v1';
   const BUY_KEY = 'mv_bought_v1';
   const HIDE_KEY = 'mv_hidden_v1';
+  const HT_KEY = 'mv_hidetitles_v1';
   function load(k){ try { return new Set(JSON.parse(localStorage.getItem(k) || '[]')); }
     catch (e) { return new Set(); } }
   const favs = load(FAV_KEY);
   const bought = load(BUY_KEY);
   const hidden = load(HIDE_KEY);
+  const HT = load(HT_KEY);   // titles hidden for ALL their occurrences
   function save(){ try {
     localStorage.setItem(FAV_KEY, JSON.stringify([...favs]));
     localStorage.setItem(BUY_KEY, JSON.stringify([...bought]));
     localStorage.setItem(HIDE_KEY, JSON.stringify([...hidden]));
+    localStorage.setItem(HT_KEY, JSON.stringify([...HT]));
   } catch (e) {} }
   const listeners = [];
   function notify(){ listeners.forEach(fn => { try { fn(); } catch (e) {} }); }
   function find(id){ return document.querySelector('.event[data-id="' + id + '"]'); }
+  function countTitle(t){ let n = 0;
+    document.querySelectorAll('.event').forEach(e => { if (e.dataset.title === t) n++; });
+    return n; }
+  function elHidden(el){ return !!el && (hidden.has(el.dataset.id) || HT.has(el.dataset.title)); }
 
   function sync(el){
     if (!el) return;
     const id = el.dataset.id;
     const fav = favs.has(id);
     const buy = bought.has(id);
-    const hid = hidden.has(id);
+    const hid = elHidden(el);
     const ticketed = !!el.dataset.ticket;
     el.classList.toggle('is-fav', fav);
     el.classList.toggle('is-bought', buy);
@@ -926,25 +997,72 @@ STATE_JS = r"""
     else { bought.add(id); favs.add(id); }   // buying auto-marks as favourite
     save(); sync(find(id)); notify();
   }
-  function toggleHide(id){
-    if (hidden.has(id)) hidden.delete(id); else hidden.add(id);
-    save(); sync(find(id)); notify();
+  function hideOne(id){ hidden.add(id); save(); sync(find(id)); notify(); }
+  function showOne(id){ hidden.delete(id); save(); sync(find(id)); notify(); }
+  function hideTitle(title){
+    HT.add(title);
+    // Individual hides for the same title are now redundant.
+    document.querySelectorAll('.event').forEach(e => {
+      if (e.dataset.title === title) hidden.delete(e.dataset.id);
+    });
+    save(); syncAll(); notify();
   }
+  function showTitle(title){
+    HT.delete(title);
+    document.querySelectorAll('.event').forEach(e => {
+      if (e.dataset.title === title) hidden.delete(e.dataset.id);
+    });
+    save(); syncAll(); notify();
+  }
+
+  // Decide single vs. all-occurrences via the styled dialog (window.MVHIDE).
+  function requestHide(id, opts){
+    opts = opts || {};
+    const el = find(id);
+    const title = el ? el.dataset.title : '';
+    const titleHidden = title && HT.has(title);
+
+    if (titleHidden || hidden.has(id)) {           // currently hidden -> restore
+      if (titleHidden) {
+        const n = countTitle(title);
+        if (window.MVHIDE && n > 1) {
+          window.MVHIDE.open({ mode:'restore', title:title, count:n,
+            onAll: () => { showTitle(title); if (opts.onChange) opts.onChange(); } });
+          return;
+        }
+        showTitle(title);
+      } else {
+        showOne(id);
+      }
+      if (opts.onChange) opts.onChange();
+      return;
+    }
+
+    const n = title ? countTitle(title) : 1;       // not hidden -> hide
+    if (window.MVHIDE && n > 1) {
+      window.MVHIDE.open({ mode:'hide', title:title, count:n,
+        onAll: () => { hideTitle(title); if (opts.onHidden) opts.onHidden(); },
+        onOne: () => { hideOne(id); if (opts.onHidden) opts.onHidden(); } });
+      return;
+    }
+    hideOne(id);
+    if (opts.onHidden) opts.onHidden();
+  }
+
   function clearHidden(){
-    if (!hidden.size) return;
-    const ids = [...hidden];
-    hidden.clear(); save();
-    ids.forEach(id => sync(find(id)));
-    notify();
+    if (!hidden.size && !HT.size) return;
+    hidden.clear(); HT.clear(); save(); syncAll(); notify();
   }
 
   window.MV = {
     isFav: id => favs.has(id),
     isBought: id => bought.has(id),
-    isHidden: id => hidden.has(id),
+    isHidden: id => elHidden(find(id)),
+    isHiddenEl: elHidden,
+    isTitleHidden: title => HT.has(title),
     toggleFav: toggleFav,
     toggleBought: toggleBought,
-    toggleHide: toggleHide,
+    requestHide: requestHide,
     clearHidden: clearHidden,
     sync: sync, syncAll: syncAll,
     onChange: fn => listeners.push(fn),
@@ -960,7 +1078,7 @@ STATE_JS = r"""
     const id = host.dataset.id;
     if (btn.classList.contains('fav')) toggleFav(id);
     else if (btn.classList.contains('bought')) toggleBought(id);
-    else if (btn.classList.contains('hide')) toggleHide(id);
+    else if (btn.classList.contains('hide')) requestHide(id);
   });
 
   syncAll();
@@ -1183,9 +1301,11 @@ def write_html(events: list[Event], path: Path, slot_minutes: int, ics_endpoint:
     parts.append(MODAL_HTML)
     parts.append(PRINTVIEW_HTML)
     parts.append(SUBSCRIBE_HTML)
+    parts.append(HIDE_DIALOG_HTML)
     cfg_json = json.dumps({"icsEndpoint": ics_endpoint or ""}, ensure_ascii=False)
     parts.append(f"<script>window.MV_CFG = {cfg_json};</script>")
     parts.append(f"<script>{STATE_JS}</script>")
+    parts.append(f"<script>{HIDE_JS}</script>")
     parts.append(f"<script>{SCRIPT_JS}</script>")
     parts.append(f"<script>{MODAL_JS}</script>")
     parts.append(f"<script>{PRINT_JS}</script>")

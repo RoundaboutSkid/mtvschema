@@ -173,11 +173,17 @@ kan du dölja den direkt, utan att redigera någon fil eller köra om skripten.
 - **✕ Dölj** – klicka på krysset i eventets övre högra hörn (eller knappen i
   detaljrutan). Eventet försvinner från schemat. Precis som favoriter sparas det
   i webbläsaren (`localStorage`) och påverkar bara din vy.
+- **Dölj alla förekomster** – om titeln återkommer flera gånger (t.ex.
+  *Tornerspel* sex dagar i rad) frågar en liten ruta om du vill **Dölj alla N**
+  eller **Bara den här**. *Dölj alla* fungerar då som en rad i
+  `exclude_titles.txt`, fast direkt i webbläsaren. Är titeln unik döljs eventet
+  direkt utan fråga.
 - **👁 Visa dolda (N)** – kryssrutan i verktygsfältet visar tillfälligt dina
   dolda event igen, nedtonade och överstrukna, så att du kan ångra. Klicka på
-  ↩-symbolen på ett event för att ta fram det igen.
+  ↩-symbolen på ett event för att ta fram det igen (är hela titeln dold frågar
+  rutan om du vill **Visa alla** igen).
 - **↩ Visa alla dolda** – knappen (som dyker upp när du har dolt något) tar fram
-  alla dolda event på en gång.
+  alla dolda event på en gång, både enskilt dolda och titeldolda.
 
 Detta kompletterar [`exclude_titles.txt`](#filtrera-bort-event): exclude-filen
 filtrerar bort sådant du vet på förhand (och gäller alla som bygger schemat),
