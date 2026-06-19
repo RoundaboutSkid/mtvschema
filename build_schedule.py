@@ -176,6 +176,10 @@ section.day.empty { display:none; }
 .event.is-bought .act.bought { opacity:1; color:#4ee48d; background:rgba(0,0,0,.36); }
 .event .info { background:rgba(0,0,0,.22); color:#fff; font-weight:700; opacity:.7; pointer-events:none; }
 .event:hover .info { opacity:1; background:rgba(0,0,0,.34); }
+.event-actions .act.hide:hover { opacity:1 !important; background:#b3261e; }
+.event.is-hidden { opacity:.45; filter:grayscale(.65); }
+.event.is-hidden .ttl { text-decoration:line-through; }
+.event.is-hidden .act.hide { opacity:1; color:#fff; background:rgba(0,0,0,.42); }
 .event .warn { display:none; }
 .event.needs-ticket .warn { display:flex; background:#e11d2a; color:#fff; font-weight:800;
   font-size:.82rem; box-shadow:0 0 0 2px rgba(255,255,255,.55); }
@@ -218,6 +222,7 @@ section.day.empty { display:none; }
 .modal .m-btn svg.tix { width:1.15em; height:1.15em; fill:currentColor; }
 .modal .m-btn.fav.on { background:#fff7e0; border-color:#e6b400; color:#7a5b00; }
 .modal .m-btn.bought.on { background:#e8f8ee; border-color:#37b86e; color:#1b6b3c; }
+.modal .m-btn.hide.on { background:#fdecea; border-color:#e0796f; color:#8a2b1f; }
 .modal .m-btn[hidden] { display:none; }
 .modal a.m-btn { text-decoration:none; }
 .modal.sub .sub-url { display:flex; gap:8px; margin:14px 0 4px; }
@@ -276,6 +281,9 @@ SCRIPT_JS = r"""
   const venueBoxes = Array.from(document.querySelectorAll('.venuebox'));
   const countEl = document.getElementById('count');
   const favOnly = document.getElementById('favOnly');
+  const showHidden = document.getElementById('showHidden');
+  const hiddenCountEl = document.getElementById('hiddenCount');
+  const unhideAll = document.getElementById('unhideAll');
   const events = Array.from(document.querySelectorAll('.event'));
   const total = events.length;
 
@@ -313,16 +321,22 @@ SCRIPT_JS = r"""
   function apply() {
     const term = (q.value || '').trim().toLowerCase();
     const onlyFav = favOnly && favOnly.checked;
-    let visible = 0;
+    const revealHidden = showHidden && showHidden.checked;
+    let visible = 0, hiddenTotal = 0;
     for (const el of events) {
+      const isHid = window.MV && window.MV.isHidden(el.dataset.id);
+      if (isHid) hiddenTotal++;
       const okCat = activeCats.has(el.dataset.cat);
       const okVenue = activeVenues.has(el.dataset.venue);
       const okText = !term || el.dataset.search.indexOf(term) !== -1;
       const okFav = !onlyFav || (window.MV && window.MV.isFav(el.dataset.id));
-      const show = okCat && okVenue && okText && okFav;
+      const okHide = !isHid || revealHidden;
+      const show = okCat && okVenue && okText && okFav && okHide;
       el.classList.toggle('hidden', !show);
       if (show) visible++;
     }
+    if (hiddenCountEl) hiddenCountEl.textContent = hiddenTotal;
+    if (unhideAll) unhideAll.style.display = hiddenTotal ? '' : 'none';
     // Hide venue columns with no visible events (or unchecked venue).
     document.querySelectorAll('.venue-col').forEach(col => {
       const venueOn = activeVenues.has(col.dataset.venue);
@@ -342,6 +356,12 @@ SCRIPT_JS = r"""
 
   q.addEventListener('input', apply);
   if (favOnly) favOnly.addEventListener('change', apply);
+  if (showHidden) showHidden.addEventListener('change', apply);
+  if (unhideAll) unhideAll.addEventListener('click', () => {
+    if (window.MV) window.MV.clearHidden();
+    if (showHidden) showHidden.checked = false;
+    apply();
+  });
   catBoxes.forEach(b => b.addEventListener('change', () => {
     if (b.checked) activeCats.add(b.value); else activeCats.delete(b.value);
     apply();
@@ -379,6 +399,7 @@ SCRIPT_JS = r"""
     if (cfilter) cfilter.value = '';
     if (vfilter) vfilter.value = '';
     if (favOnly) favOnly.checked = false;
+    if (showHidden) showHidden.checked = false;
     apply();
   });
 
@@ -398,6 +419,7 @@ MODAL_HTML = (
     "<div class='m-actions'>"
     "<button type='button' class='m-btn fav' id='m-fav'>\u2606 Favorit</button>"
     "<button type='button' class='m-btn bought' id='m-bought' hidden>Markera biljett som k\u00f6pt</button>"
+    "<button type='button' class='m-btn hide' id='m-hide'>\u2715 D\u00f6lj event</button>"
     "</div>"
     "<a class='m-ticket' id='m-ticket' target='_blank' rel='noopener' hidden>Köp biljett \u2197</a>"
     "</div></div>"
@@ -414,6 +436,7 @@ MODAL_JS = r"""
   const mTicket = document.getElementById('m-ticket');
   const mFav = document.getElementById('m-fav');
   const mBought = document.getElementById('m-bought');
+  const mHide = document.getElementById('m-hide');
   let currentId = null, currentTicketed = false;
   const TICKET_SVG = "<svg class='tix' viewBox='0 0 24 24' aria-hidden='true'><rect x='3' y='6' width='13' height='12' rx='2.5'/><rect x='18' y='6' width='3' height='12' rx='1.5'/></svg>";
 
@@ -435,6 +458,9 @@ MODAL_JS = r"""
     mBought.hidden = !currentTicketed;
     mBought.innerHTML = TICKET_SVG + (buy ? ' Biljett k\u00f6pt' : ' Markera biljett som k\u00f6pt');
     mBought.classList.toggle('on', buy);
+    const hid = currentId ? window.MV.isHidden(currentId) : false;
+    mHide.textContent = hid ? '\u21a9 Visa eventet igen' : '\u2715 D\u00f6lj event';
+    mHide.classList.toggle('on', hid);
   }
 
   function openFor(el) {
@@ -490,6 +516,12 @@ MODAL_JS = r"""
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !modal.hidden) close(); });
   mFav.addEventListener('click', () => { if (window.MV && currentId) window.MV.toggleFav(currentId); });
   mBought.addEventListener('click', () => { if (window.MV && currentId) window.MV.toggleBought(currentId); });
+  mHide.addEventListener('click', () => {
+    if (!window.MV || !currentId) return;
+    const wasHidden = window.MV.isHidden(currentId);
+    window.MV.toggleHide(currentId);
+    if (!wasHidden) close();   // just hid it – no point keeping the dialog open
+  });
   if (window.MV) window.MV.onChange(refreshActions);
 })();
 """
@@ -846,13 +878,16 @@ STATE_JS = r"""
 (function () {
   const FAV_KEY = 'mv_fav_v1';
   const BUY_KEY = 'mv_bought_v1';
+  const HIDE_KEY = 'mv_hidden_v1';
   function load(k){ try { return new Set(JSON.parse(localStorage.getItem(k) || '[]')); }
     catch (e) { return new Set(); } }
   const favs = load(FAV_KEY);
   const bought = load(BUY_KEY);
+  const hidden = load(HIDE_KEY);
   function save(){ try {
     localStorage.setItem(FAV_KEY, JSON.stringify([...favs]));
     localStorage.setItem(BUY_KEY, JSON.stringify([...bought]));
+    localStorage.setItem(HIDE_KEY, JSON.stringify([...hidden]));
   } catch (e) {} }
   const listeners = [];
   function notify(){ listeners.forEach(fn => { try { fn(); } catch (e) {} }); }
@@ -863,9 +898,11 @@ STATE_JS = r"""
     const id = el.dataset.id;
     const fav = favs.has(id);
     const buy = bought.has(id);
+    const hid = hidden.has(id);
     const ticketed = !!el.dataset.ticket;
     el.classList.toggle('is-fav', fav);
     el.classList.toggle('is-bought', buy);
+    el.classList.toggle('is-hidden', hid);
     el.classList.toggle('needs-ticket', fav && ticketed && !buy);
     const favBtn = el.querySelector('.act.fav');
     if (favBtn){ favBtn.setAttribute('aria-pressed', fav ? 'true' : 'false');
@@ -873,6 +910,10 @@ STATE_JS = r"""
     const buyBtn = el.querySelector('.act.bought');
     if (buyBtn){ buyBtn.setAttribute('aria-pressed', buy ? 'true' : 'false');
       buyBtn.title = buy ? 'Biljett markerad som köpt' : 'Markera att du köpt biljett'; }
+    const hideBtn = el.querySelector('.act.hide');
+    if (hideBtn){ hideBtn.setAttribute('aria-pressed', hid ? 'true' : 'false');
+      hideBtn.textContent = hid ? '\u21a9' : '\u2715';
+      hideBtn.title = hid ? 'Visa det här eventet igen' : 'Dölj det här eventet'; }
   }
   function syncAll(){ document.querySelectorAll('.event').forEach(sync); }
 
@@ -885,12 +926,26 @@ STATE_JS = r"""
     else { bought.add(id); favs.add(id); }   // buying auto-marks as favourite
     save(); sync(find(id)); notify();
   }
+  function toggleHide(id){
+    if (hidden.has(id)) hidden.delete(id); else hidden.add(id);
+    save(); sync(find(id)); notify();
+  }
+  function clearHidden(){
+    if (!hidden.size) return;
+    const ids = [...hidden];
+    hidden.clear(); save();
+    ids.forEach(id => sync(find(id)));
+    notify();
+  }
 
   window.MV = {
     isFav: id => favs.has(id),
     isBought: id => bought.has(id),
+    isHidden: id => hidden.has(id),
     toggleFav: toggleFav,
     toggleBought: toggleBought,
+    toggleHide: toggleHide,
+    clearHidden: clearHidden,
     sync: sync, syncAll: syncAll,
     onChange: fn => listeners.push(fn),
   };
@@ -905,6 +960,7 @@ STATE_JS = r"""
     const id = host.dataset.id;
     if (btn.classList.contains('fav')) toggleFav(id);
     else if (btn.classList.contains('bought')) toggleBought(id);
+    else if (btn.classList.contains('hide')) toggleHide(id);
   });
 
   syncAll();
@@ -954,6 +1010,10 @@ def _event_block_html(p: Placement, day: DayLayout, lane_count: int) -> str:
     actions.append(
         "<button type='button' class='act fav' aria-pressed='false' "
         "title='Markera som favorit'>\u2605</button>"
+    )
+    actions.append(
+        "<button type='button' class='act hide' aria-pressed='false' "
+        "title='D\u00f6lj det h\u00e4r eventet'>\u2715</button>"
     )
     actions.append("<span class='info' aria-hidden='true'>i</span>")
     pieces.append("<div class='event-actions'>" + "".join(actions) + "</div>")
@@ -1080,6 +1140,8 @@ def _toolbar_html(events: list[Event], ics_endpoint: str = "") -> str:
         f"<div class='filterlist'>{boxes}</div>"
         "</div></details>"
         "<label class='favtoggle'><input type='checkbox' id='favOnly'> \u2605 Bara favoriter</label>"
+        "<label class='favtoggle'><input type='checkbox' id='showHidden'> \U0001f441 Visa dolda (<span id='hiddenCount'>0</span>)</label>"
+        "<button class='reset' id='unhideAll' title='Visa alla dolda event igen' style='display:none'>\u21a9 Visa alla dolda</button>"
         "<button class='reset' id='printFav' title='\u00d6ppna en utskriftsv\u00e4nlig lista \u00f6ver dina favoriter'>\u2605 Skriv ut favoriter</button>"
         "<button class='reset' id='icsFav' title='Ladda ner dina favoriter som en kalenderfil (.ics)'>\U0001f4c5 Lägg till i kalender</button>"
         f"{sub_btn}"

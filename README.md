@@ -165,6 +165,27 @@ besök – de följer **inte** med datafilerna och delas inte med andra.
   eller när programmet uppdateras. Till skillnad från *Lägg till i kalender* är
   detta alltså inte en ögonblicksbild.
 
+## Dölj event du inte vill se
+
+Ibland upptäcker du först *i schemat* att en programpunkt inte är intressant. Då
+kan du dölja den direkt, utan att redigera någon fil eller köra om skripten.
+
+- **✕ Dölj** – klicka på krysset i eventets övre högra hörn (eller knappen i
+  detaljrutan). Eventet försvinner från schemat. Precis som favoriter sparas det
+  i webbläsaren (`localStorage`) och påverkar bara din vy.
+- **👁 Visa dolda (N)** – kryssrutan i verktygsfältet visar tillfälligt dina
+  dolda event igen, nedtonade och överstrukna, så att du kan ångra. Klicka på
+  ↩-symbolen på ett event för att ta fram det igen.
+- **↩ Visa alla dolda** – knappen (som dyker upp när du har dolt något) tar fram
+  alla dolda event på en gång.
+
+Detta kompletterar [`exclude_titles.txt`](#filtrera-bort-event): exclude-filen
+filtrerar bort sådant du vet på förhand (och gäller alla som bygger schemat),
+medan **Dölj** är ett personligt komplement för det du kommer på i efterhand –
+särskilt smidigt för den som bara öppnar en färdig HTML-fil och inte kör
+skripten själv. Att dölja ett event rör inte dina favoriter eller exporter; det
+är enbart en vy-inställning.
+
 ## Så fungerar layouten
 
 Schemat ritas som en tidslinje per dag: platser som kolumner och tiden nedåt.
