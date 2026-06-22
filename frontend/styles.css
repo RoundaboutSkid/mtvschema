@@ -99,25 +99,23 @@ section.day.empty { display:none; }
 .event .tag { display:inline-flex; align-items:center; gap:4px; padding:1px 7px; border-radius:999px;
   background:rgba(0,0,0,.05); color:var(--muted); font-size:.65rem; font-weight:600; line-height:1.5; }
 .event .tag .dot { width:7px; height:7px; border-radius:50%; background:var(--cat,#bbb); flex:0 0 auto; }
-.event a.tag.ticket { text-decoration:none; cursor:pointer; color:#fff; background:var(--header-bg); font-weight:700; }
-.event a.tag.ticket:hover { filter:brightness(1.14); }
-.event a.tag.ticket .tk { flex:0 0 auto; }
-.event a.tag.ticket.bought { background:#2e9e5b; }
-.event a.tag.ticket.bought .tk-tx { display:none; }
-.event a.tag.ticket.bought .tk::after { content:'\2009\2713'; font-weight:800; }
 .event-actions { position:absolute; top:3px; right:4px; display:flex; align-items:center;
-  gap:3px; z-index:5; }
+  gap:3px; z-index:5; pointer-events:none; }
 .event-actions > * { width:17px; height:17px; border-radius:50%; display:flex; line-height:1;
   align-items:center; justify-content:center; font-size:.72rem; font-style:normal; }
 .event-actions .act { border:none; padding:0; cursor:pointer; color:var(--muted);
-  background:rgba(0,0,0,.06); opacity:.5; transition:opacity .1s, background .1s, color .1s; }
+  background:rgba(0,0,0,.06); opacity:.5; pointer-events:auto;
+  transition:opacity .1s, background .1s, color .1s; }
 .event:hover .event-actions .act { opacity:.9; }
 .event-actions .act:hover { opacity:1 !important; background:rgba(0,0,0,.12); color:var(--ink); }
 .event.is-fav .act.fav { opacity:1; color:#fff; background:#e0a21a; }
-.event-actions .act.hide:hover { opacity:1 !important; background:#b3261e; color:#fff; }
+/* Röd biljett-ikon = indikator att eventet kräver biljett; grön när köpt. */
+.event-actions .tixmark { color:#e11d2a; opacity:1; }
+.event-actions .tixmark svg.tix { width:12px; height:12px; display:block; fill:currentColor; }
+.event-actions .tixmark.bought { color:#2e9e5b; }
+.event.short .event-actions .tixmark svg.tix { width:10px; height:10px; }
 .event.is-hidden { opacity:.5; filter:grayscale(.55); }
 .event.is-hidden .ttl { text-decoration:line-through; }
-.event.is-hidden .act.hide { opacity:1; color:#fff; background:#8a2018; }
 .event.needs-ticket { border-left-color:#e11d2a; }
 .event.short .event-actions > * { width:15px; height:15px; font-size:.62rem; }
 .event.short { padding:1px 8px; }
