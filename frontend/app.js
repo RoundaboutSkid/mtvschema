@@ -17,10 +17,6 @@
   const DATA = (typeof window !== 'undefined' && window.MV_DATA) || {};
   window.MV_CFG = { icsEndpoint: DATA.icsEndpoint || '' };
 
-  const TICKET_SVG = "<svg class='tix' viewBox='0 0 24 24' aria-hidden='true'>" +
-    "<rect x='3' y='6' width='13' height='12' rx='2.5'/>" +
-    "<rect x='18' y='6' width='3' height='12' rx='1.5'/></svg>";
-
   // Fast bredd per lane -> korten får konstant bredd i tidslinje-vyerna oavsett
   // hur många parallella spalter en plats/zon har den dagen.
   const LANE_W = 150;
@@ -161,12 +157,12 @@
 
     const acts = el('div', 'event-actions');
     if (ev.ticket) {
-      // Röd biljett-ikon = indikator att eventet kräver biljett. Själva köpet och
-      // "markera som köpt" sker i detaljvyn; ikonen blir grön när biljetten är köpt.
+      // Biljett-emoji = tydlig indikator att eventet kräver biljett. Köpet och
+      // "markera som köpt" sker i detaljvyn; emojin får grön ton när biljetten är köpt.
       const tk = el('span', 'tixmark');
       tk.setAttribute('aria-hidden', 'true');
       tk.title = 'Det här eventet kräver biljett';
-      tk.innerHTML = TICKET_SVG; acts.appendChild(tk);
+      tk.textContent = '🎟'; acts.appendChild(tk);
     }
     const fav = el('button', 'act fav');
     fav.type = 'button'; fav.setAttribute('aria-pressed', 'false');
@@ -704,7 +700,6 @@
   const mBought = document.getElementById('m-bought');
   const mHide = document.getElementById('m-hide');
   let currentId = null, currentTicketed = false;
-  const TICKET_SVG = "<svg class='tix' viewBox='0 0 24 24' aria-hidden='true'><rect x='3' y='6' width='13' height='12' rx='2.5'/><rect x='18' y='6' width='3' height='12' rx='1.5'/></svg>";
 
   function addBadge(text, color, href) {
     const b = document.createElement(href ? 'a' : 'span');
@@ -722,7 +717,7 @@
     mFav.textContent = (fav ? '\u2605' : '\u2606') + ' Favorit';
     mFav.classList.toggle('on', fav);
     mBought.hidden = !currentTicketed;
-    mBought.innerHTML = TICKET_SVG + (buy ? ' Biljett k\u00f6pt' : ' Markera biljett som k\u00f6pt');
+    mBought.textContent = '🎟' + (buy ? ' Biljett k\u00f6pt' : ' Markera biljett som k\u00f6pt');
     mBought.classList.toggle('on', buy);
     const hid = currentId ? window.MV.isHidden(currentId) : false;
     mHide.textContent = hid ? '\u21a9 Visa eventet igen' : '\u2715 D\u00f6lj event';

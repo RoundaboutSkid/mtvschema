@@ -115,11 +115,10 @@ section.day.empty { display:none; }
 .event:hover .event-actions .act { opacity:.9; }
 .event-actions .act:hover { opacity:1 !important; background:rgba(0,0,0,.12); color:var(--ink); }
 .event.is-fav .act.fav { opacity:1; color:#fff; background:#e0a21a; }
-/* Röd biljett-ikon = indikator att eventet kräver biljett; grön när köpt. */
-.event-actions .tixmark { color:#e11d2a; opacity:1; }
-.event-actions .tixmark svg.tix { width:12px; height:12px; display:block; fill:currentColor; }
-.event-actions .tixmark.bought { color:#2e9e5b; }
-.event.short .event-actions .tixmark svg.tix { width:10px; height:10px; }
+/* Biljett-emoji som indikator (tydlig biljett-ikon); grön ton när biljetten är köpt. */
+.event-actions .tixmark { opacity:1; font-size:.82rem; line-height:1; filter:saturate(1.15); }
+.event-actions .tixmark.bought { filter:hue-rotate(125deg) saturate(1.5) brightness(.95); }
+.event.short .event-actions .tixmark { font-size:.7rem; }
 .event.is-hidden { opacity:.5; filter:grayscale(.55); }
 .event.is-hidden .ttl { text-decoration:line-through; }
 .event.needs-ticket { border-left-color:#e11d2a; }
@@ -401,10 +400,6 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; pointer-events:auto
   const DATA = (typeof window !== 'undefined' && window.MV_DATA) || {};
   window.MV_CFG = { icsEndpoint: DATA.icsEndpoint || '' };
 
-  const TICKET_SVG = "<svg class='tix' viewBox='0 0 24 24' aria-hidden='true'>" +
-    "<rect x='3' y='6' width='13' height='12' rx='2.5'/>" +
-    "<rect x='18' y='6' width='3' height='12' rx='1.5'/></svg>";
-
   // Fast bredd per lane -> korten får konstant bredd i tidslinje-vyerna oavsett
   // hur många parallella spalter en plats/zon har den dagen.
   const LANE_W = 150;
@@ -545,12 +540,12 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; pointer-events:auto
 
     const acts = el('div', 'event-actions');
     if (ev.ticket) {
-      // Röd biljett-ikon = indikator att eventet kräver biljett. Själva köpet och
-      // "markera som köpt" sker i detaljvyn; ikonen blir grön när biljetten är köpt.
+      // Biljett-emoji = tydlig indikator att eventet kräver biljett. Köpet och
+      // "markera som köpt" sker i detaljvyn; emojin får grön ton när biljetten är köpt.
       const tk = el('span', 'tixmark');
       tk.setAttribute('aria-hidden', 'true');
       tk.title = 'Det här eventet kräver biljett';
-      tk.innerHTML = TICKET_SVG; acts.appendChild(tk);
+      tk.textContent = '🎟'; acts.appendChild(tk);
     }
     const fav = el('button', 'act fav');
     fav.type = 'button'; fav.setAttribute('aria-pressed', 'false');
@@ -1088,7 +1083,6 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; pointer-events:auto
   const mBought = document.getElementById('m-bought');
   const mHide = document.getElementById('m-hide');
   let currentId = null, currentTicketed = false;
-  const TICKET_SVG = "<svg class='tix' viewBox='0 0 24 24' aria-hidden='true'><rect x='3' y='6' width='13' height='12' rx='2.5'/><rect x='18' y='6' width='3' height='12' rx='1.5'/></svg>";
 
   function addBadge(text, color, href) {
     const b = document.createElement(href ? 'a' : 'span');
@@ -1106,7 +1100,7 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; pointer-events:auto
     mFav.textContent = (fav ? '\u2605' : '\u2606') + ' Favorit';
     mFav.classList.toggle('on', fav);
     mBought.hidden = !currentTicketed;
-    mBought.innerHTML = TICKET_SVG + (buy ? ' Biljett k\u00f6pt' : ' Markera biljett som k\u00f6pt');
+    mBought.textContent = '🎟' + (buy ? ' Biljett k\u00f6pt' : ' Markera biljett som k\u00f6pt');
     mBought.classList.toggle('on', buy);
     const hid = currentId ? window.MV.isHidden(currentId) : false;
     mHide.textContent = hid ? '\u21a9 Visa eventet igen' : '\u2715 D\u00f6lj event';
