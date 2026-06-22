@@ -118,12 +118,22 @@
     if (ev.status) n.setAttribute('data-status', ev.status);
     if (ev.ticket) n.setAttribute('data-ticket', ev.ticket);
     if (ev.desc) n.setAttribute('data-desc', ev.desc);
+    // Två uppsättningar lane-positioner: plats (v) och zon (z). VIEW växlar mellan dem.
+    n.setAttribute('data-vleft', ev.left);
+    n.setAttribute('data-vwidth', ev.width);
+    if (ev.zLeft != null) n.setAttribute('data-zleft', ev.zLeft);
+    if (ev.zWidth != null) n.setAttribute('data-zwidth', ev.zWidth);
+    n.setAttribute('data-zone', ev.zone || 'Z?');
 
     const t = el('span', 't'); t.textContent = ev.time; n.appendChild(t);
     const ttl = el('span', 'ttl'); ttl.textContent = ev.title; n.appendChild(ttl);
     if (ev.orgShow && ev.org) {
       const o = el('span', 'org'); o.textContent = ev.org; n.appendChild(o);
     }
+    // Plats-etikett (ikon + plats) – visas bara i zon-vyn där kolumnen blandar platser.
+    const place = el('span', 'ev-place');
+    place.textContent = (ev.icon ? ev.icon + ' ' : '') + (ev.venue || '');
+    n.appendChild(place);
 
     if (ev.cat || ev.status) {
       const meta = el('div', 'meta');
@@ -199,6 +209,22 @@
       track.appendChild(ti); col.appendChild(track); board.appendChild(col);
     });
 
+    // Zon-kolumner (tomma) – VIEW flyttar in event-noderna när zon-vyn aktiveras.
+    (d.zones || []).forEach(z => {
+      const col = el('div', 'zone-col');
+      col.setAttribute('data-zone', z.id);
+      col.style.minWidth = z.minW + 'px';
+      const zh = el('div', 'zone-head'); zh.style.background = '#' + z.color; zh.title = z.label;
+      const nm = el('span', 'zname'); nm.textContent = z.label; zh.appendChild(nm);
+      if (z.icons && z.icons.length) {
+        const ic = el('span', 'zicons'); ic.textContent = z.icons.join(''); zh.appendChild(ic);
+      }
+      col.appendChild(zh);
+      const track = el('div', 'track');
+      const ti = el('div', 'track-inner'); ti.style.height = d.trackH + 'px';
+      track.appendChild(ti); col.appendChild(track); board.appendChild(col);
+    });
+
     scroll.appendChild(board);
     return scroll;
   }
@@ -265,13 +291,45 @@
     document.body.dataset.view = mode;
     if (bar) bar.querySelectorAll('.vbtn').forEach(b =>
       b.setAttribute('aria-pressed', b.dataset.view === mode ? 'true' : 'false'));
+    if (mode === 'zones') { moveTo('zones'); if (note) note.hidden = true; return; }
+    moveTo('flow');                       // flöde + (ännu) alla platser delar plats-layouten
     if (mode === 'flow') { if (note) note.hidden = true; return; }
-    const n = ensureNote();
+    const n = ensureNote();               // 'places' – byggs i nästa steg
     if (n) {
       n.hidden = false;
       n.innerHTML = '\uD83D\uDD27 <b>' + labelFor(mode) +
         '</b>-vyn byggs i ett kommande steg. Visar <b>Flöde</b> så länge.';
     }
+  }
+
+  // Flytta (inte återskapa) event-noderna mellan plats- och zon-kolumner så att
+  // all befintlig wiring (favoriter, modal, filter) följer med oförändrad.
+  let placed = 'flow';
+  function placeEvent(node, m) {
+    const L = m === 'zones' ? node.dataset.zleft : node.dataset.vleft;
+    const W = m === 'zones' ? node.dataset.zwidth : node.dataset.vwidth;
+    if (L != null) node.style.left = L + '%';
+    if (W != null) node.style.width = 'calc(' + W + '% - 3px)';
+  }
+  function moveTo(target) {
+    if (placed === target) return;
+    document.querySelectorAll('section.day').forEach(day => {
+      if (target === 'zones') {
+        day.querySelectorAll('.venue-col .event').forEach(node => {
+          const z = node.dataset.zone || 'Z?';
+          const dest = day.querySelector('.zone-col[data-zone="' + z + '"] .track-inner');
+          if (dest) { dest.appendChild(node); placeEvent(node, 'zones'); }
+        });
+      } else {
+        day.querySelectorAll('.zone-col .event').forEach(node => {
+          const dest = day.querySelector('.venue-col[data-venue="' + node.dataset.venue + '"] .track-inner');
+          if (dest) { dest.appendChild(node); placeEvent(node, 'flow'); }
+        });
+      }
+    });
+    placed = target;
+    if (window.MV) window.MV.syncAll();
+    if (window.MVFILTER) window.MVFILTER.apply();
   }
 
   function render() {
@@ -567,9 +625,16 @@
       const hasVisible = venueOn && col.querySelector('.event:not(.hidden)') !== null;
       col.classList.toggle('hidden', !hasVisible);
     });
-    // Hide days with no visible columns; dim their nav links.
+    // Hide zone columns with no visible events (zon-band-vyn).
+    document.querySelectorAll('.zone-col').forEach(col => {
+      const hasVisible = col.querySelector('.event:not(.hidden)') !== null;
+      col.classList.toggle('hidden', !hasVisible);
+    });
+    // Hide days with no visible columns (of the active view); dim their nav links.
+    const colSel = (document.body.dataset.view === 'zones')
+      ? '.zone-col:not(.hidden)' : '.venue-col:not(.hidden)';
     document.querySelectorAll('section.day').forEach(day => {
-      const any = day.querySelector('.venue-col:not(.hidden)') !== null;
+      const any = day.querySelector(colSel) !== null;
       day.classList.toggle('empty', !any);
       const link = document.querySelector('nav.days a[href="#' + day.id + '"]');
       if (link) link.classList.toggle('empty', !any);
@@ -628,6 +693,7 @@
   });
 
   if (window.MV) window.MV.onChange(apply);
+  window.MVFILTER = { apply: apply };
   apply();
 })();
 

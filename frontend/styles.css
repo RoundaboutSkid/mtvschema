@@ -129,6 +129,24 @@ section.day.empty { display:none; }
 .event.short .ttl { font-size:.7rem; }
 .nohits { padding:14px 4px; color:var(--muted); font-style:italic; }
 
+/* Zon-band-vy: zonerna ersätter platskolumnerna; varje kort visar sin plats. */
+.zone-col { flex:1 1 0; display:flex; flex-direction:column; border-right:2px solid var(--line2); }
+.zone-col.hidden { display:none; }
+.zone-head { height:var(--head-h); position:sticky; top:0; z-index:8; color:#fff; font-weight:700;
+  font-size:.82rem; line-height:1.12; display:flex; align-items:center; justify-content:center;
+  gap:7px; padding:4px 10px; overflow:hidden; text-align:center;
+  border-left:1px solid rgba(255,255,255,.16); }
+.zone-head .zname { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.zone-head .zicons { font-size:.95rem; letter-spacing:1px; flex:0 0 auto; }
+.ev-place { display:none; }
+body[data-view="zones"] .ev-place { display:block; font-size:.64rem; font-weight:700; opacity:.95;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+body[data-view="zones"] .event.short .ev-place { display:none; }
+/* Visa rätt kolumntyp per vy. */
+body[data-view="flow"] .zone-col,
+body[data-view="places"] .zone-col { display:none; }
+body[data-view="zones"] .venue-col { display:none; }
+
 .modal-overlay { position:fixed; inset:0; z-index:50; display:flex; align-items:center;
   justify-content:center; padding:24px; background:rgba(20,12,6,.55); backdrop-filter:blur(2px); }
 .modal-overlay[hidden] { display:none; }

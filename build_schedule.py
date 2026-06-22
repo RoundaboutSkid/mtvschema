@@ -27,6 +27,7 @@ from medeltidsveckan_common import (
     DayLayout,
     Event,
     Placement,
+    _layout_intervals,
     build_day_layout,
     category_color,
     dedupe,
@@ -53,6 +54,9 @@ CONFIG_FILENAME = "medeltidsveckan_config.json"  # persists e.g. the subscriptio
 VENUES_FILENAME = "medeltidsveckan_venues.json"  # editable place→type/zone/map-point table
 DEFAULT_VENUE_TYPE = "ovrigt"
 DEFAULT_VENUE_ICON = "\U0001F4CD"  # 📍 fallback for places missing from the table
+# Header colours for the zone-band view (one per zone id, parchment-friendly).
+ZONE_COLORS = {"Z1": "B5793A", "Z2": "5B8C5A", "Z3": "5C7CA8", "Z4": "8E6BA8", "Z5": "8A6D3B"}
+DEFAULT_ZONE_COLOR = "6B7280"
 FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"  # editable HTML/CSS/JS sources
 
 
@@ -118,8 +122,32 @@ def _event_record(p: Placement, day: DayLayout, lane_count: int) -> dict:
     return rec
 
 
-def _day_record(layout: DayLayout) -> dict:
-    """Serialise one day's computed layout for ``window.MV_DATA``."""
+def _zone_placements(day_events: list[Event], zone_of: dict[str, str | None]):
+    """Lane-pack a day's events grouped by *zone* (parallel to the venue layout).
+
+    Returns ``{zone_id: (lane_count, [(event, lane, span)])}`` using the same
+    interval-graph colouring as the venue layout, so the two views share the
+    exact same time axis and only differ in horizontal grouping.
+    """
+    by_zone: dict[str, list[Event]] = defaultdict(list)
+    for e in day_events:
+        by_zone[zone_of.get(e.venue) or "Z?"].append(e)
+    out: dict[str, tuple[int, list]] = {}
+    for z, evs in by_zone.items():
+        lane_count, placed = _layout_intervals([(e.start_min, e.end_min, e) for e in evs])
+        out[z] = (max(lane_count, 1), placed)
+    return out
+
+
+def _day_record(layout: DayLayout, day_events: list[Event], venue_meta: dict[str, dict],
+                zone_of: dict[str, str | None], zones_meta: list[dict]) -> dict:
+    """Serialise one day's computed layout for ``window.MV_DATA``.
+
+    Emits two parallel groupings sharing one time axis: ``venues`` (the flow
+    view) and ``zones`` (the zone-band view). Each event record is created once
+    and carries both its venue lane (``left``/``width``) and its zone lane
+    (``zLeft``/``zWidth``) plus the place ``icon``.
+    """
     track_h = _pos(layout.day_end_min - layout.day_start_min)
     slot_px = round(layout.slot_minutes * PX_PER_MIN, 1)
     ticks = []
@@ -131,21 +159,59 @@ def _day_record(layout: DayLayout) -> dict:
             "hour": minute % 60 == 0,
         })
         minute += layout.slot_minutes
+
+    rec_of: dict[int, dict] = {}
     venues = []
     for v in layout.venues:
+        evs = []
+        for p in v.placements:
+            rec = _event_record(p, layout, v.lane_count)
+            rec["icon"] = venue_meta.get(rec["venue"], {}).get("icon", DEFAULT_VENUE_ICON)
+            rec_of[id(p.event)] = rec
+            evs.append(rec)
         venues.append({
             "venue": v.venue,
             "laneCount": v.lane_count,
             "minW": max(150, v.lane_count * 132),
-            "events": [_event_record(p, layout, v.lane_count) for p in v.placements],
+            "events": evs,
         })
+
+    # Zone grouping shares the same time axis; attach zone lane info to each record.
+    zlay = _zone_placements(day_events, zone_of)
+    zone_label = {z["id"]: z.get("label", z["id"]) for z in zones_meta}
+    order = [z["id"] for z in zones_meta] + ["Z?"]
+    zones = []
+    for z in order:
+        if z not in zlay:
+            continue
+        lane_count, placed = zlay[z]
+        icons: list[str] = []
+        for event, lane, span in placed:
+            rec = rec_of.get(id(event))
+            if rec is None:
+                continue
+            rec["zone"] = z
+            rec["zLeft"] = round(lane / lane_count * 100, 4)
+            rec["zWidth"] = round(span / lane_count * 100, 4)
+            ic = rec.get("icon")
+            if ic and ic not in icons:
+                icons.append(ic)
+        zones.append({
+            "id": z,
+            "label": zone_label.get(z, "Övrigt" if z == "Z?" else z),
+            "color": ZONE_COLORS.get(z, DEFAULT_ZONE_COLOR),
+            "icons": icons[:5],
+            "laneCount": lane_count,
+            "minW": max(180, lane_count * 132),
+        })
+
     label = f"{(layout.weekday[:3] or layout.date)} {layout.date[5:]}"
     title = f"{layout.weekday} {layout.date}".strip()
     return {
         "date": layout.date, "weekday": layout.weekday, "label": label, "title": title,
         "dayStart": layout.day_start_min, "dayEnd": layout.day_end_min,
         "slot": layout.slot_minutes, "px": PX_PER_MIN, "slotPx": slot_px, "trackH": track_h,
-        "ticks": ticks, "venues": venues,
+        "ticks": ticks, "venues": venues, "zones": zones,
     }
 
 
@@ -212,6 +278,9 @@ def _data_payload(events: list[Event], slot_minutes: int, ics_endpoint: str) -> 
         for v in unknown:
             print(f"  • {v}")
 
+    zone_of = {v: (info.get("zon") if info else None) for v, info in venue_meta.items()}
+    days = [_day_record(l, by_day[l.date], venue_meta, zone_of, meta["zones"]) for l in layouts]
+
     return {
         "icsEndpoint": ics_endpoint or "",
         "cats": cat_items,
@@ -219,7 +288,7 @@ def _data_payload(events: list[Event], slot_minutes: int, ics_endpoint: str) -> 
         "venueMeta": venue_meta,
         "types": meta["types"],
         "zones": meta["zones"],
-        "days": [_day_record(l) for l in layouts],
+        "days": days,
     }
 
 
