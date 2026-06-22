@@ -21,6 +21,10 @@
     "<rect x='3' y='6' width='13' height='12' rx='2.5'/>" +
     "<rect x='18' y='6' width='3' height='12' rx='1.5'/></svg>";
 
+  // Fast bredd per lane -> korten får konstant bredd i tidslinje-vyerna oavsett
+  // hur många parallella spalter en plats/zon har den dagen.
+  const LANE_W = 150;
+
   function el(tag, cls) {
     const n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -218,41 +222,34 @@
     });
     ab.appendChild(ai); axis.appendChild(ab); board.appendChild(axis);
 
-    // Ingen plats-timeline här längre: Flöde är en lista och Alla platser-vyn
-    // täcker tidslinjen per plats. Tavlan har bara axel + zon- + plats-kolumner.
+    // Plats-kolumner (en per plats med program den dagen), bredd = laneCount × LANE_W
+    // så korten får konstant bredd. Tomma/bortfiltrerade döljs av SCRIPT.apply().
+    // Korten byggs i flödeslistan och flyttas hit av VIEW när Alla platser aktiveras.
+    (d.venues || []).forEach(v => {
+      const col = el('div', 'venue-col');
+      col.setAttribute('data-venue', v.venue);
+      col.style.width = (v.laneCount * LANE_W) + 'px';
+      const vh = el('div', 'venue-head'); vh.title = v.venue;
+      const ic = el('span', 'vh-icon'); ic.textContent = v.icon || '\uD83D\uDCCD';
+      const nm = el('span', 'vh-name'); nm.textContent = v.venue;
+      vh.appendChild(ic); vh.appendChild(document.createTextNode(' ')); vh.appendChild(nm);
+      col.appendChild(vh);
+      const track = el('div', 'track');
+      const ti = el('div', 'track-inner'); ti.style.height = d.trackH + 'px';
+      track.appendChild(ti); col.appendChild(track); board.appendChild(col);
+    });
 
-    // Zon-kolumner (tomma) – VIEW flyttar in event-noderna när zon-vyn aktiveras.
+    // Zon-kolumner (tomma), bredd = laneCount × LANE_W → konstant kortbredd.
     (d.zones || []).forEach(z => {
       const col = el('div', 'zone-col');
       col.setAttribute('data-zone', z.id);
-      col.style.minWidth = z.minW + 'px';
+      col.style.width = (z.laneCount * LANE_W) + 'px';
       const zh = el('div', 'zone-head'); zh.style.background = '#' + z.color; zh.title = z.label;
       const nm = el('span', 'zname'); nm.textContent = z.label; zh.appendChild(nm);
       if (z.icons && z.icons.length) {
         const ic = el('span', 'zicons'); ic.textContent = z.icons.join(''); zh.appendChild(ic);
       }
       col.appendChild(zh);
-      const track = el('div', 'track');
-      const ti = el('div', 'track-inner'); ti.style.height = d.trackH + 'px';
-      track.appendChild(ti); col.appendChild(track); board.appendChild(col);
-    });
-
-    // Plats-kolumner (alla platser, veckomax-bredd) – samma uppsättning och bredd
-    // varje dag så en plats håller samma x-position ("spola i tiden"). VIEW flyttar
-    // in event-noderna när Alla platser-vyn aktiveras; tomma kolumner står kvar.
-    (DATA.places || []).forEach(pl => {
-      const col = el('div', 'places-col');
-      col.setAttribute('data-venue', pl.venue);
-      col.dataset.wFull = pl.minW;
-      col.style.flex = '0 0 ' + pl.minW + 'px';
-      col.style.width = pl.minW + 'px';
-      const vh = el('div', 'venue-head'); vh.title = pl.venue;
-      const pic = el('span', 'ph-icon'); pic.textContent = pl.icon || '\uD83D\uDCCD';
-      const pnm = el('span', 'ph-name'); pnm.textContent = pl.venue;
-      vh.appendChild(pic);
-      vh.appendChild(document.createTextNode(' '));
-      vh.appendChild(pnm);
-      col.appendChild(vh);
       const track = el('div', 'track');
       const ti = el('div', 'track-inner'); ti.style.height = d.trackH + 'px';
       track.appendChild(ti); col.appendChild(track); board.appendChild(col);
@@ -306,36 +303,11 @@
   function store(v) { try { localStorage.setItem(VIEW_KEY, v); } catch (e) {} }
   let mode = load();
 
-  // Kompakt-läge (gäller bara Alla platser-vyn): platser som saknar synliga event
-  // idag tas bort helt; knappen visar hur många som döljs. x-positioner förskjuts.
-  const COMPACT_KEY = 'mv_compact_v1';
-  function loadCompact() { try { return localStorage.getItem(COMPACT_KEY) === '1'; } catch (e) { return false; } }
-  let compact = loadCompact();
-  let compactBtn = null;
-  function applyCompact() {
-    const on = compact && mode === 'places';
-    document.body.dataset.compact = compact ? '1' : '0';
-    let hidden = 0;
-    document.querySelectorAll('.places-col').forEach(col => {
-      const empty = col.querySelector('.event:not(.hidden)') === null;
-      const collapse = on && empty;
-      col.classList.toggle('collapsed', collapse);
-      if (collapse) hidden++;
-    });
-    if (compactBtn) {
-      compactBtn.setAttribute('aria-pressed', compact ? 'true' : 'false');
-      compactBtn.innerHTML = "<span aria-hidden='true'>\u2194</span> Kompakt" +
-        (on && hidden ? " <span class='cbadge'>" + hidden + " dolda</span>" : "");
-    }
-  }
-
   function applyMode() {
     document.body.dataset.view = mode;
     if (bar) bar.querySelectorAll('.vbtn').forEach(b =>
       b.setAttribute('aria-pressed', b.dataset.view === mode ? 'true' : 'false'));
-    if (compactBtn) compactBtn.hidden = (mode !== 'places');
     moveTo(mode);
-    applyCompact();
   }
 
   // Flytta (inte återskapa) event-noderna mellan plats-, zon- och alla-platser-
@@ -353,7 +325,7 @@
     if (target === 'flow') return day.querySelector('.flow-list');
     if (target === 'zones')
       return day.querySelector('.zone-col[data-zone="' + (node.dataset.zone || 'Z?') + '"] .track-inner');
-    return day.querySelector('.places-col[data-venue="' + node.dataset.venue + '"] .track-inner');
+    return day.querySelector('.venue-col[data-venue="' + node.dataset.venue + '"] .track-inner');
   }
   function moveTo(target) {
     if (placed === target) return;
@@ -392,23 +364,8 @@
       sw.appendChild(b);
     });
     bar.appendChild(sw);
-
-    compactBtn = document.createElement('button');
-    compactBtn.type = 'button';
-    compactBtn.className = 'vtoggle';
-    compactBtn.hidden = true;
-    compactBtn.setAttribute('aria-pressed', compact ? 'true' : 'false');
-    compactBtn.title = 'Krymp tomma platser till smala band';
-    compactBtn.innerHTML = "<span aria-hidden='true'>\u2194</span> Kompakt";
-    compactBtn.addEventListener('click', () => {
-      compact = !compact;
-      try { localStorage.setItem(COMPACT_KEY, compact ? '1' : '0'); } catch (e) {}
-      applyCompact();
-    });
-    bar.appendChild(compactBtn);
   }
 
-  window.MVVIEW = { refreshCompact: applyCompact };
   render();
   applyMode();
 })();
@@ -680,10 +637,12 @@
       const hasVisible = col.querySelector('.event:not(.hidden)') !== null;
       col.classList.toggle('hidden', !hasVisible);
     });
-    // Alla platser-vyn: dölj en kolumn bara när platsen är bortfiltrerad. Tomma men
-    // ikryssade kolumner står kvar så varje plats behåller samma x-position varje dag.
-    document.querySelectorAll('.places-col').forEach(col => {
-      col.classList.toggle('hidden', !activeVenues.has(col.dataset.venue));
+    // Alla platser-vyn: dölj plats-kolumner som är bortfiltrerade ELLER saknar
+    // synligt program (t.ex. i "Bara favoriter") så vyn anpassar sig till urvalet.
+    document.querySelectorAll('.venue-col').forEach(col => {
+      const venueOn = activeVenues.has(col.dataset.venue);
+      const hasVisible = venueOn && col.querySelector('.event:not(.hidden)') !== null;
+      col.classList.toggle('hidden', !hasVisible);
     });
     // Hide days with no visible events (event-noderna ligger i aktiv vys kolumner).
     document.querySelectorAll('section.day').forEach(day => {
@@ -693,7 +652,6 @@
       if (link) link.classList.toggle('empty', !any);
     });
     adaptDays();
-    if (window.MVVIEW) window.MVVIEW.refreshCompact();
     countEl.textContent = 'Visar ' + visible + ' av ' + total + ' programpunkter';
   }
 

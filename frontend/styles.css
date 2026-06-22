@@ -51,19 +51,13 @@ button.reset { font:inherit; font-size:.8rem; font-weight:600; padding:6px 12px;
   display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
 .viewswitch .vbtn:hover { color:var(--ink); background:var(--bg); }
 .viewswitch .vbtn[aria-pressed="true"] { background:var(--header-bg); color:#fff; }
-.vtoggle { font:inherit; font-size:.82rem; font-weight:600; color:var(--muted); background:#fff;
-  border:1px solid var(--line2); border-radius:10px; padding:6px 12px; cursor:pointer;
-  display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
-.vtoggle:hover { color:var(--ink); }
-.vtoggle[aria-pressed="true"] { background:var(--header-bg); color:#fff; border-color:var(--header-bg); }
-.vtoggle[hidden] { display:none; }
 
 section.day { padding:16px 24px 34px; }
 section.day h2 { margin:0 0 10px; text-transform:capitalize; }
 section.day.empty { display:none; }
 
 .board-scroll { overflow:auto; max-height:var(--board-max-h); min-height:160px;
-  overscroll-behavior:contain; border:1px solid var(--line); border-radius:10px; background:#fff; }
+  border:1px solid var(--line); border-radius:10px; background:#fff; }
 .board { display:flex; align-items:stretch; min-width:max-content; }
 .axis-col { position:sticky; left:0; z-index:12; flex:0 0 var(--axis-w); background:#fff;
   border-right:1px solid var(--line); }
@@ -74,9 +68,11 @@ section.day.empty { display:none; }
   font-weight:700; color:var(--muted); white-space:nowrap; }
 .tick.hour { color:var(--ink); }
 
-.venue-col { flex:1 1 0; display:flex; flex-direction:column;
+.venue-col { flex:0 0 auto; display:flex; flex-direction:column;
   border-right:1px solid var(--line); }
 .venue-col.hidden { display:none; }
+.venue-head .vh-icon { flex:0 0 auto; }
+.venue-head .vh-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .venue-head { height:var(--head-h); position:sticky; top:0; z-index:8; background:var(--header-bg);
   color:#fff; font-weight:700; font-size:.82rem; line-height:1.1; text-align:center;
   display:flex; align-items:center; justify-content:center; padding:4px 8px; overflow:hidden;
@@ -96,7 +92,7 @@ section.day.empty { display:none; }
   cursor:pointer; transition:box-shadow .12s, background .12s; }
 .event:hover { background:#fffdf8; box-shadow:0 5px 14px rgba(0,0,0,.16); z-index:6; }
 .event.hidden { display:none; }
-.event .t { font-weight:700; font-size:.7rem; color:var(--muted); letter-spacing:.2px; }
+.event .t { font-weight:700; font-size:.7rem; color:var(--muted); letter-spacing:.2px; white-space:nowrap; }
 .event .ttl { font-weight:700; display:block; color:var(--ink); }
 .event .org { color:var(--muted); display:block; font-size:.7rem; }
 .event .meta { margin-top:3px; display:flex; flex-wrap:wrap; gap:4px; align-items:center; }
@@ -134,7 +130,7 @@ section.day.empty { display:none; }
 .nohits { padding:14px 4px; color:var(--muted); font-style:italic; }
 
 /* Zon-band-vy: zonerna ersätter platskolumnerna; varje kort visar sin plats. */
-.zone-col { flex:1 1 0; display:flex; flex-direction:column; border-right:2px solid var(--line2); }
+.zone-col { flex:0 0 auto; display:flex; flex-direction:column; border-right:2px solid var(--line2); }
 .zone-col.hidden { display:none; }
 .zone-head { height:var(--head-h); position:sticky; top:0; z-index:8; color:#fff; font-weight:700;
   font-size:.82rem; line-height:1.12; display:flex; align-items:center; justify-content:center;
@@ -146,15 +142,11 @@ section.day.empty { display:none; }
 body[data-view="zones"] .ev-place { display:block; font-size:.64rem; font-weight:600; color:var(--muted);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
 body[data-view="zones"] .event.short .ev-place { display:none; }
-/* Alla platser-vy: fasta veckomax-breda kolumner så varje plats håller samma x. */
-.places-col { display:flex; flex-direction:column; border-right:1px solid var(--line); }
-.places-col.hidden { display:none; }
-/* Visa exakt en kolumntyp per vy. */
+/* Visa exakt en kolumntyp per vy: Flöde = lista, Zon-band = zon-kolumner,
+   Alla platser = plats-(venue-)kolumner. */
+body[data-view="flow"] .venue-col,
 body[data-view="flow"] .zone-col,
-body[data-view="flow"] .places-col,
 body[data-view="zones"] .venue-col,
-body[data-view="zones"] .places-col,
-body[data-view="places"] .venue-col,
 body[data-view="places"] .zone-col { display:none; }
 
 /* Flödesvy: kronologisk lista (mkal-stil) – separata lugna kort. Tid + platstagg
@@ -195,25 +187,16 @@ body[data-view="flow"] .event.short .org { display:block; }
 body[data-view="flow"] .event.short .meta { display:flex; }
 body[data-view="flow"] .event.short .ev-place { display:inline-flex; }
 
-/* Kompakt-läge (Alla platser): platser utan synligt program idag tas bort helt.
-   Den aktiva Kompakt-knappen (med antal dolda) är indikationen; x-positionerna
-   förskjuts i det här läget, vilket är okej. */
-.places-col .venue-head { gap:5px; }
-.places-col .ph-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-body[data-view="places"][data-compact="1"] .places-col.collapsed { display:none; }
-.vtoggle .cbadge { display:inline-block; margin-left:4px; padding:0 7px; border-radius:999px;
-  background:rgba(255,255,255,.26); font-size:.72rem; font-weight:700; }
-
 /* Tidslinje-vyer (Zon-band & Alla platser): egen kortbakgrund så korten inte
-   smälter ihop med vita kolumner och timlinjer; konstant maxbredd så ensamma
-   kort inte breder ut sig; sekundära knappar visas först vid hover. */
+   smälter ihop med vita kolumner och timlinjer; sekundära knappar visas först
+   vid hover, och tiden har högermarginal så ikonerna aldrig ligger över den. */
 body[data-view="zones"] .event,
 body[data-view="places"] .event { background:#f6efe1; border-color:var(--line2);
-  box-shadow:0 1px 3px rgba(0,0,0,.16); max-width:210px; }
+  box-shadow:0 1px 3px rgba(0,0,0,.16); }
 body[data-view="zones"] .event:hover,
 body[data-view="places"] .event:hover { background:#fffaf0; box-shadow:0 5px 14px rgba(0,0,0,.22); }
 body[data-view="zones"] .event .t,
-body[data-view="places"] .event .t { padding-right:34px; }
+body[data-view="places"] .event .t { padding-right:52px; }
 body[data-view="zones"] .event-actions .act,
 body[data-view="places"] .event-actions .act { opacity:0; pointer-events:none; }
 body[data-view="zones"] .event:hover .event-actions .act,

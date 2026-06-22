@@ -171,8 +171,8 @@ def _day_record(layout: DayLayout, day_events: list[Event], venue_meta: dict[str
             evs.append(rec)
         venues.append({
             "venue": v.venue,
+            "icon": venue_meta.get(v.venue, {}).get("icon", DEFAULT_VENUE_ICON),
             "laneCount": v.lane_count,
-            "minW": max(150, v.lane_count * 132),
             "events": evs,
         })
 
@@ -282,19 +282,6 @@ def _data_payload(events: list[Event], slot_minutes: int, ics_endpoint: str) -> 
     zone_of = {v: (info.get("zon") if info else None) for v, info in venue_meta.items()}
     days = [_day_record(l, by_day[l.date], venue_meta, zone_of, meta["zones"]) for l in layouts]
 
-    # Weekly-max lanes per venue -> a stable column width for the "all places"
-    # view so a venue keeps the same x-position (and width) on every day.
-    weekly_max: dict[str, int] = {}
-    for l in layouts:
-        for v in l.venues:
-            weekly_max[v.venue] = max(weekly_max.get(v.venue, 1), v.lane_count)
-    places = [{
-        "venue": v,
-        "icon": venue_meta.get(v, {}).get("icon", DEFAULT_VENUE_ICON),
-        "laneCount": weekly_max.get(v, 1),
-        "minW": max(132, weekly_max.get(v, 1) * 120),
-    } for v in venues]
-
     return {
         "icsEndpoint": ics_endpoint or "",
         "cats": cat_items,
@@ -302,7 +289,6 @@ def _data_payload(events: list[Event], slot_minutes: int, ics_endpoint: str) -> 
         "venueMeta": venue_meta,
         "types": meta["types"],
         "zones": meta["zones"],
-        "places": places,
         "days": days,
     }
 
