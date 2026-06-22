@@ -157,50 +157,71 @@ body[data-view="zones"] .places-col,
 body[data-view="places"] .venue-col,
 body[data-view="places"] .zone-col { display:none; }
 
-/* Flödesvy: kronologisk lista (mkal-stil) – inga tidslinjer eller höjder.
-   Samma event-noder som tidslinjerna; här gör CSS om dem till lugna listrader. */
+/* Flödesvy: kronologisk lista (mkal-stil) – separata lugna kort. Tid + platstagg
+   till vänster, titel/arrangör/kategori till höger. Inga tidslinjer eller höjder. */
 .flow-list { display:none; }
 body[data-view="flow"] .board-scroll { display:none; }
-body[data-view="flow"] .flow-list { display:block; background:#fff;
-  border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+body[data-view="flow"] .flow-list { display:flex; flex-direction:column; gap:10px;
+  max-width:880px; }
 body[data-view="flow"] .event {
-  position:static; top:auto; left:auto; height:auto !important; width:auto !important;
-  display:flex; flex-wrap:wrap; align-items:baseline; column-gap:12px; row-gap:3px;
-  border:0; border-bottom:1px solid var(--line); border-left:4px solid var(--cat,#bbb);
-  border-radius:0; box-shadow:none; padding:11px 16px 11px 14px; }
-body[data-view="flow"] .flow-list .event:last-child { border-bottom:0; }
-body[data-view="flow"] .event:hover { background:#fff8ee; box-shadow:none; }
-body[data-view="flow"] .event .t { order:0; flex:0 0 auto; min-width:108px;
-  font-size:.84rem; font-weight:700; color:var(--ink); letter-spacing:0; }
-body[data-view="flow"] .event .ttl { order:1; flex:0 1 auto; font-size:.95rem; }
-body[data-view="flow"] .event .ev-place { order:2; display:inline-flex; flex:0 0 auto;
-  font-size:.8rem; font-weight:600; color:var(--muted); white-space:normal; margin:0; }
-body[data-view="flow"] .event .org { order:3; flex:0 0 auto; display:block;
-  font-size:.78rem; color:var(--muted); }
-body[data-view="flow"] .event .meta { order:4; flex:0 0 auto; margin-top:0; }
-body[data-view="flow"] .event .event-actions { order:5; position:static; flex:0 0 auto;
-  margin-left:auto; align-self:center; }
-body[data-view="flow"] .event .event-actions .act { opacity:.75; }
-/* Listan bryr sig inte om kort varaktighet – visa allt innehåll på raden. */
-body[data-view="flow"] .event.short { padding:11px 16px 11px 14px; }
+  position:static; top:auto; left:auto !important; height:auto !important; width:auto !important;
+  max-width:none; display:grid; grid-template-columns:152px minmax(0,1fr) auto;
+  column-gap:14px; row-gap:2px; align-content:start;
+  background:#fff; border:1px solid var(--line); border-left:4px solid var(--zone,#bbb);
+  border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.07); padding:12px 14px; }
+body[data-view="flow"] .event:hover { background:#fffdf8; box-shadow:0 4px 12px rgba(0,0,0,.13); }
+body[data-view="flow"] .event .t { grid-column:1; grid-row:1; align-self:center;
+  font-size:.82rem; font-weight:700; color:var(--ink); letter-spacing:0; white-space:nowrap; }
+body[data-view="flow"] .event .ev-place { grid-column:1; grid-row:2; align-self:start;
+  display:inline-flex; align-items:center; gap:5px; width:max-content; max-width:100%;
+  min-width:0; margin:6px 0 0; padding:2px 9px; border-radius:999px;
+  font-size:.74rem; font-weight:700; color:var(--zone,#555);
+  background-color:var(--zone,#eee);
+  background-image:linear-gradient(rgba(255,255,255,.80),rgba(255,255,255,.80)); }
+body[data-view="flow"] .event .ev-place .picon { flex:0 0 auto; }
+body[data-view="flow"] .event .ev-place .pname { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+body[data-view="flow"] .event .ttl { grid-column:2; grid-row:1; font-size:.95rem; font-weight:700; }
+body[data-view="flow"] .event .ttl::after { content:' \203A L\00e4s mer'; color:var(--muted);
+  font-weight:600; font-size:.8rem; white-space:nowrap; }
+body[data-view="flow"] .event .org { grid-column:2; grid-row:2; font-size:.8rem; color:var(--muted); }
+body[data-view="flow"] .event .meta { grid-column:2; grid-row:3; margin-top:5px; }
+body[data-view="flow"] .event .event-actions { grid-column:3; grid-row:1; position:static;
+  align-self:start; }
+body[data-view="flow"] .event .event-actions .act { opacity:.7; }
+/* Listan visar allt innehåll oavsett varaktighet. */
+body[data-view="flow"] .event.short { padding:12px 14px; }
 body[data-view="flow"] .event.short .ttl { font-size:.95rem; }
 body[data-view="flow"] .event.short .org { display:block; }
 body[data-view="flow"] .event.short .meta { display:flex; }
 body[data-view="flow"] .event.short .ev-place { display:inline-flex; }
 
-/* Kompakt-läge (Alla platser): tomma platser krymper till ett smalt band med
-   ikon + lodrätt namn; platser med event behåller full bredd. */
+/* Kompakt-läge (Alla platser): platser utan synligt program idag tas bort helt.
+   Den aktiva Kompakt-knappen (med antal dolda) är indikationen; x-positionerna
+   förskjuts i det här läget, vilket är okej. */
 .places-col .venue-head { gap:5px; }
 .places-col .ph-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-body[data-view="places"] .places-col.collapsed { min-width:0; }
-body[data-view="places"] .places-col.collapsed .venue-head { flex-direction:column;
-  gap:3px; padding:6px 2px 8px; line-height:1.05; }
-body[data-view="places"] .places-col.collapsed .ph-icon { font-size:1.05rem; }
-body[data-view="places"] .places-col.collapsed .ph-name { writing-mode:vertical-rl;
-  text-orientation:mixed; transform:rotate(180deg); max-height:150px; overflow:hidden;
-  text-overflow:ellipsis; font-size:.64rem; font-weight:600; color:rgba(255,255,255,.92); }
-body[data-view="places"] .places-col.collapsed .track { background:#f3ece0; }
-body[data-view="places"] .places-col.collapsed .track-inner { opacity:.45; }
+body[data-view="places"][data-compact="1"] .places-col.collapsed { display:none; }
+.vtoggle .cbadge { display:inline-block; margin-left:4px; padding:0 7px; border-radius:999px;
+  background:rgba(255,255,255,.26); font-size:.72rem; font-weight:700; }
+
+/* Tidslinje-vyer (Zon-band & Alla platser): egen kortbakgrund så korten inte
+   smälter ihop med vita kolumner och timlinjer; konstant maxbredd så ensamma
+   kort inte breder ut sig; sekundära knappar visas först vid hover. */
+body[data-view="zones"] .event,
+body[data-view="places"] .event { background:#f6efe1; border-color:var(--line2);
+  box-shadow:0 1px 3px rgba(0,0,0,.16); max-width:210px; }
+body[data-view="zones"] .event:hover,
+body[data-view="places"] .event:hover { background:#fffaf0; box-shadow:0 5px 14px rgba(0,0,0,.22); }
+body[data-view="zones"] .event .t,
+body[data-view="places"] .event .t { padding-right:34px; }
+body[data-view="zones"] .event-actions .act,
+body[data-view="places"] .event-actions .act { opacity:0; pointer-events:none; }
+body[data-view="zones"] .event:hover .event-actions .act,
+body[data-view="places"] .event:hover .event-actions .act { opacity:.9; pointer-events:auto; }
+body[data-view="zones"] .event.is-fav .act.fav,
+body[data-view="places"] .event.is-fav .act.fav,
+body[data-view="zones"] .event.is-bought .act.bought,
+body[data-view="places"] .event.is-bought .act.bought { opacity:1; pointer-events:auto; }
 
 .modal-overlay { position:fixed; inset:0; z-index:50; display:flex; align-items:center;
   justify-content:center; padding:24px; background:rgba(20,12,6,.55); backdrop-filter:blur(2px); }

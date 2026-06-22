@@ -191,6 +191,7 @@ def _day_record(layout: DayLayout, day_events: list[Event], venue_meta: dict[str
             if rec is None:
                 continue
             rec["zone"] = z
+            rec["zColor"] = ZONE_COLORS.get(z, DEFAULT_ZONE_COLOR)
             rec["zLeft"] = round(lane / lane_count * 100, 4)
             rec["zWidth"] = round(span / lane_count * 100, 4)
             ic = rec.get("icon")

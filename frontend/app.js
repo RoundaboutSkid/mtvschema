@@ -125,15 +125,20 @@
     if (ev.zLeft != null) n.setAttribute('data-zleft', ev.zLeft);
     if (ev.zWidth != null) n.setAttribute('data-zwidth', ev.zWidth);
     n.setAttribute('data-zone', ev.zone || 'Z?');
+    n.style.setProperty('--zone', '#' + (ev.zColor || '6B7280'));
 
     const t = el('span', 't'); t.textContent = ev.time; n.appendChild(t);
     const ttl = el('span', 'ttl'); ttl.textContent = ev.title; n.appendChild(ttl);
     if (ev.orgShow && ev.org) {
       const o = el('span', 'org'); o.textContent = ev.org; n.appendChild(o);
     }
-    // Plats-etikett (ikon + plats) – visas bara i zon-vyn där kolumnen blandar platser.
+    // Plats-etikett (ikon + plats). Visas i flödet (färgad zon-pill) och i zon-vyn.
     const place = el('span', 'ev-place');
-    place.textContent = (ev.icon ? ev.icon + ' ' : '') + (ev.venue || '');
+    if (ev.icon) {
+      const pic = el('span', 'picon'); pic.textContent = ev.icon; place.appendChild(pic);
+      place.appendChild(document.createTextNode(' '));
+    }
+    const pnm = el('span', 'pname'); pnm.textContent = ev.venue || ''; place.appendChild(pnm);
     n.appendChild(place);
 
     if (ev.cat || ev.status) {
@@ -302,29 +307,26 @@
   let mode = load();
 
   // Kompakt-läge (gäller bara Alla platser-vyn): platser som saknar synliga event
-  // idag krymper till ett smalt band (ikon + lodrätt namn); platser med event
-  // behåller full bredd. Körs om efter varje filtrering via window.MVVIEW.
+  // idag tas bort helt; knappen visar hur många som döljs. x-positioner förskjuts.
   const COMPACT_KEY = 'mv_compact_v1';
-  const COLLAPSED_W = 30;
   function loadCompact() { try { return localStorage.getItem(COMPACT_KEY) === '1'; } catch (e) { return false; } }
   let compact = loadCompact();
   let compactBtn = null;
   function applyCompact() {
     const on = compact && mode === 'places';
     document.body.dataset.compact = compact ? '1' : '0';
+    let hidden = 0;
     document.querySelectorAll('.places-col').forEach(col => {
       const empty = col.querySelector('.event:not(.hidden)') === null;
       const collapse = on && empty;
       col.classList.toggle('collapsed', collapse);
-      if (collapse) {
-        col.style.flex = '0 0 ' + COLLAPSED_W + 'px';
-        col.style.width = COLLAPSED_W + 'px';
-      } else if (col.dataset.wFull) {
-        col.style.flex = '0 0 ' + col.dataset.wFull + 'px';
-        col.style.width = col.dataset.wFull + 'px';
-      }
+      if (collapse) hidden++;
     });
-    if (compactBtn) compactBtn.setAttribute('aria-pressed', compact ? 'true' : 'false');
+    if (compactBtn) {
+      compactBtn.setAttribute('aria-pressed', compact ? 'true' : 'false');
+      compactBtn.innerHTML = "<span aria-hidden='true'>\u2194</span> Kompakt" +
+        (on && hidden ? " <span class='cbadge'>" + hidden + " dolda</span>" : "");
+    }
   }
 
   function applyMode() {
