@@ -239,11 +239,14 @@
       const col = el('div', 'places-col');
       col.setAttribute('data-venue', pl.venue);
       col.dataset.wFull = pl.minW;
-      col.dataset.wCompact = pl.minWc || pl.minW;
       col.style.flex = '0 0 ' + pl.minW + 'px';
       col.style.width = pl.minW + 'px';
       const vh = el('div', 'venue-head'); vh.title = pl.venue;
-      vh.textContent = (pl.icon ? pl.icon + ' ' : '') + pl.venue;
+      const pic = el('span', 'ph-icon'); pic.textContent = pl.icon || '\uD83D\uDCCD';
+      const pnm = el('span', 'ph-name'); pnm.textContent = pl.venue;
+      vh.appendChild(pic);
+      vh.appendChild(document.createTextNode(' '));
+      vh.appendChild(pnm);
       col.appendChild(vh);
       const track = el('div', 'track');
       const ti = el('div', 'track-inner'); ti.style.height = d.trackH + 'px';
@@ -298,16 +301,28 @@
   function store(v) { try { localStorage.setItem(VIEW_KEY, v); } catch (e) {} }
   let mode = load();
 
-  // Kompakt-läge: smalare platskolumner (gäller bara Alla platser-vyn).
+  // Kompakt-läge (gäller bara Alla platser-vyn): platser som saknar synliga event
+  // idag krymper till ett smalt band (ikon + lodrätt namn); platser med event
+  // behåller full bredd. Körs om efter varje filtrering via window.MVVIEW.
   const COMPACT_KEY = 'mv_compact_v1';
+  const COLLAPSED_W = 30;
   function loadCompact() { try { return localStorage.getItem(COMPACT_KEY) === '1'; } catch (e) { return false; } }
   let compact = loadCompact();
   let compactBtn = null;
   function applyCompact() {
+    const on = compact && mode === 'places';
     document.body.dataset.compact = compact ? '1' : '0';
     document.querySelectorAll('.places-col').forEach(col => {
-      const w = (compact ? col.dataset.wCompact : col.dataset.wFull) || col.dataset.wFull;
-      if (w) { col.style.flex = '0 0 ' + w + 'px'; col.style.width = w + 'px'; }
+      const empty = col.querySelector('.event:not(.hidden)') === null;
+      const collapse = on && empty;
+      col.classList.toggle('collapsed', collapse);
+      if (collapse) {
+        col.style.flex = '0 0 ' + COLLAPSED_W + 'px';
+        col.style.width = COLLAPSED_W + 'px';
+      } else if (col.dataset.wFull) {
+        col.style.flex = '0 0 ' + col.dataset.wFull + 'px';
+        col.style.width = col.dataset.wFull + 'px';
+      }
     });
     if (compactBtn) compactBtn.setAttribute('aria-pressed', compact ? 'true' : 'false');
   }
@@ -318,7 +333,7 @@
       b.setAttribute('aria-pressed', b.dataset.view === mode ? 'true' : 'false'));
     if (compactBtn) compactBtn.hidden = (mode !== 'places');
     moveTo(mode);
-    if (mode === 'places') applyCompact();
+    applyCompact();
   }
 
   // Flytta (inte återskapa) event-noderna mellan plats-, zon- och alla-platser-
@@ -381,7 +396,7 @@
     compactBtn.className = 'vtoggle';
     compactBtn.hidden = true;
     compactBtn.setAttribute('aria-pressed', compact ? 'true' : 'false');
-    compactBtn.title = 'Smalare kolumner – mindre sidoskroll';
+    compactBtn.title = 'Krymp tomma platser till smala band';
     compactBtn.innerHTML = "<span aria-hidden='true'>\u2194</span> Kompakt";
     compactBtn.addEventListener('click', () => {
       compact = !compact;
@@ -391,6 +406,7 @@
     bar.appendChild(compactBtn);
   }
 
+  window.MVVIEW = { refreshCompact: applyCompact };
   render();
   applyMode();
 })();
@@ -675,6 +691,7 @@
       if (link) link.classList.toggle('empty', !any);
     });
     adaptDays();
+    if (window.MVVIEW) window.MVVIEW.refreshCompact();
     countEl.textContent = 'Visar ' + visible + ' av ' + total + ' programpunkter';
   }
 

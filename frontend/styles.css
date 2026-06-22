@@ -188,12 +188,19 @@ body[data-view="flow"] .event.short .org { display:block; }
 body[data-view="flow"] .event.short .meta { display:flex; }
 body[data-view="flow"] .event.short .ev-place { display:inline-flex; }
 
-/* Komprimerat läge: smalare kolumner -> mindre text så korten förblir läsbara. */
-body[data-view="places"][data-compact="1"] .event { font-size:.68rem; padding:2px 4px; }
-body[data-view="places"][data-compact="1"] .event .t { font-size:.62rem; }
-body[data-view="places"][data-compact="1"] .event .org,
-body[data-view="places"][data-compact="1"] .event .meta { display:none; }
-body[data-view="places"][data-compact="1"] .venue-head { font-size:.7rem; padding:3px 5px; }
+/* Kompakt-läge (Alla platser): tomma platser krymper till ett smalt band med
+   ikon + lodrätt namn; platser med event behåller full bredd. */
+.places-col .venue-head { gap:5px; }
+.places-col .ph-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+body[data-view="places"] .places-col.collapsed { min-width:0; }
+body[data-view="places"] .places-col.collapsed .venue-head { flex-direction:column;
+  gap:3px; padding:6px 2px 8px; line-height:1.05; }
+body[data-view="places"] .places-col.collapsed .ph-icon { font-size:1.05rem; }
+body[data-view="places"] .places-col.collapsed .ph-name { writing-mode:vertical-rl;
+  text-orientation:mixed; transform:rotate(180deg); max-height:150px; overflow:hidden;
+  text-overflow:ellipsis; font-size:.64rem; font-weight:600; color:rgba(255,255,255,.92); }
+body[data-view="places"] .places-col.collapsed .track { background:#f3ece0; }
+body[data-view="places"] .places-col.collapsed .track-inner { opacity:.45; }
 
 .modal-overlay { position:fixed; inset:0; z-index:50; display:flex; align-items:center;
   justify-content:center; padding:24px; background:rgba(20,12,6,.55); backdrop-filter:blur(2px); }
