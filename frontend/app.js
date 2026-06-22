@@ -225,6 +225,22 @@
       track.appendChild(ti); col.appendChild(track); board.appendChild(col);
     });
 
+    // Plats-kolumner (alla platser, veckomax-bredd) – samma uppsättning och bredd
+    // varje dag så en plats håller samma x-position ("spola i tiden"). VIEW flyttar
+    // in event-noderna när Alla platser-vyn aktiveras; tomma kolumner står kvar.
+    (DATA.places || []).forEach(pl => {
+      const col = el('div', 'places-col');
+      col.setAttribute('data-venue', pl.venue);
+      col.style.flex = '0 0 ' + pl.minW + 'px';
+      col.style.width = pl.minW + 'px';
+      const vh = el('div', 'venue-head'); vh.title = pl.venue;
+      vh.textContent = (pl.icon ? pl.icon + ' ' : '') + pl.venue;
+      col.appendChild(vh);
+      const track = el('div', 'track');
+      const ti = el('div', 'track-inner'); ti.style.height = d.trackH + 'px';
+      track.appendChild(ti); col.appendChild(track); board.appendChild(col);
+    });
+
     scroll.appendChild(board);
     return scroll;
   }
@@ -252,9 +268,9 @@
 /* --------------------------------------------------------------------------
  * VIEW – vy-växlare (Flöde / Zon-band / Alla platser)
  *
- * Skelett: läget sparas i localStorage och speglas i body[data-view] så att
- * framtida vyer kan haka på. Än så länge är bara "Flöde" byggd; övriga lägen
- * visar en notis men behåller flödestavlan så inget ser trasigt ut.
+ * Läget sparas i localStorage och speglas i body[data-view]. Varje vy har sin
+ * egen uppsättning kolumner i tavlan; moveTo() flyttar (inte återskapar) event-
+ * noderna till rätt kolumntyp så all befintlig wiring följer med oförändrad.
  * ------------------------------------------------------------------------ */
 (function () {
   const VIEW_KEY = 'mv_view_v1';
@@ -270,62 +286,38 @@
     catch (e) { return 'flow'; }
   }
   function store(v) { try { localStorage.setItem(VIEW_KEY, v); } catch (e) {} }
-  function labelFor(id) { const v = VIEWS.find(x => x.id === id); return v ? v.label : id; }
   let mode = load();
-
-  // Notis för vyer som ännu inte är byggda (skelettstadiet).
-  let note = null;
-  function ensureNote() {
-    if (note) return note;
-    const days = document.getElementById('mv-days');
-    if (!days) return null;
-    note = document.createElement('div');
-    note.className = 'view-note';
-    note.id = 'mv-view-note';
-    note.hidden = true;
-    days.parentNode.insertBefore(note, days);
-    return note;
-  }
 
   function applyMode() {
     document.body.dataset.view = mode;
     if (bar) bar.querySelectorAll('.vbtn').forEach(b =>
       b.setAttribute('aria-pressed', b.dataset.view === mode ? 'true' : 'false'));
-    if (mode === 'zones') { moveTo('zones'); if (note) note.hidden = true; return; }
-    moveTo('flow');                       // flöde + (ännu) alla platser delar plats-layouten
-    if (mode === 'flow') { if (note) note.hidden = true; return; }
-    const n = ensureNote();               // 'places' – byggs i nästa steg
-    if (n) {
-      n.hidden = false;
-      n.innerHTML = '\uD83D\uDD27 <b>' + labelFor(mode) +
-        '</b>-vyn byggs i ett kommande steg. Visar <b>Flöde</b> så länge.';
-    }
+    moveTo(mode);
   }
 
-  // Flytta (inte återskapa) event-noderna mellan plats- och zon-kolumner så att
-  // all befintlig wiring (favoriter, modal, filter) följer med oförändrad.
+  // Flytta (inte återskapa) event-noderna mellan plats-, zon- och alla-platser-
+  // kolumner så att all befintlig wiring (favoriter, modal, filter) följer med.
   let placed = 'flow';
-  function placeEvent(node, m) {
-    const L = m === 'zones' ? node.dataset.zleft : node.dataset.vleft;
-    const W = m === 'zones' ? node.dataset.zwidth : node.dataset.vwidth;
+  function placeEvent(node, target) {
+    const zone = target === 'zones';
+    const L = zone ? node.dataset.zleft : node.dataset.vleft;
+    const W = zone ? node.dataset.zwidth : node.dataset.vwidth;
     if (L != null) node.style.left = L + '%';
     if (W != null) node.style.width = 'calc(' + W + '% - 3px)';
+  }
+  function destFor(day, target, node) {
+    if (target === 'zones')
+      return day.querySelector('.zone-col[data-zone="' + (node.dataset.zone || 'Z?') + '"] .track-inner');
+    const sel = target === 'places' ? '.places-col' : '.venue-col';
+    return day.querySelector(sel + '[data-venue="' + node.dataset.venue + '"] .track-inner');
   }
   function moveTo(target) {
     if (placed === target) return;
     document.querySelectorAll('section.day').forEach(day => {
-      if (target === 'zones') {
-        day.querySelectorAll('.venue-col .event').forEach(node => {
-          const z = node.dataset.zone || 'Z?';
-          const dest = day.querySelector('.zone-col[data-zone="' + z + '"] .track-inner');
-          if (dest) { dest.appendChild(node); placeEvent(node, 'zones'); }
-        });
-      } else {
-        day.querySelectorAll('.zone-col .event').forEach(node => {
-          const dest = day.querySelector('.venue-col[data-venue="' + node.dataset.venue + '"] .track-inner');
-          if (dest) { dest.appendChild(node); placeEvent(node, 'flow'); }
-        });
-      }
+      day.querySelectorAll('.event').forEach(node => {
+        const dest = destFor(day, target, node);
+        if (dest) { dest.appendChild(node); placeEvent(node, target); }
+      });
     });
     placed = target;
     if (window.MV) window.MV.syncAll();
@@ -630,11 +622,14 @@
       const hasVisible = col.querySelector('.event:not(.hidden)') !== null;
       col.classList.toggle('hidden', !hasVisible);
     });
-    // Hide days with no visible columns (of the active view); dim their nav links.
-    const colSel = (document.body.dataset.view === 'zones')
-      ? '.zone-col:not(.hidden)' : '.venue-col:not(.hidden)';
+    // Alla platser-vyn: dölj en kolumn bara när platsen är bortfiltrerad. Tomma men
+    // ikryssade kolumner står kvar så varje plats behåller samma x-position varje dag.
+    document.querySelectorAll('.places-col').forEach(col => {
+      col.classList.toggle('hidden', !activeVenues.has(col.dataset.venue));
+    });
+    // Hide days with no visible events (event-noderna ligger i aktiv vys kolumner).
     document.querySelectorAll('section.day').forEach(day => {
-      const any = day.querySelector(colSel) !== null;
+      const any = day.querySelector('.event:not(.hidden)') !== null;
       day.classList.toggle('empty', !any);
       const link = document.querySelector('nav.days a[href="#' + day.id + '"]');
       if (link) link.classList.toggle('empty', !any);

@@ -51,9 +51,6 @@ button.reset { font:inherit; font-size:.8rem; font-weight:600; padding:6px 12px;
   display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
 .viewswitch .vbtn:hover { color:var(--ink); background:var(--bg); }
 .viewswitch .vbtn[aria-pressed="true"] { background:var(--header-bg); color:#fff; }
-.view-note { margin:12px 24px 0; padding:10px 14px; border:1px dashed var(--line2);
-  border-radius:10px; background:#fff8ec; color:var(--muted); font-size:.86rem; }
-.view-note[hidden] { display:none; }
 
 section.day { padding:16px 24px 34px; }
 section.day h2 { margin:0 0 10px; text-transform:capitalize; }
@@ -142,10 +139,16 @@ section.day.empty { display:none; }
 body[data-view="zones"] .ev-place { display:block; font-size:.64rem; font-weight:700; opacity:.95;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
 body[data-view="zones"] .event.short .ev-place { display:none; }
-/* Visa rätt kolumntyp per vy. */
+/* Alla platser-vy: fasta veckomax-breda kolumner så varje plats håller samma x. */
+.places-col { display:flex; flex-direction:column; border-right:1px solid var(--line); }
+.places-col.hidden { display:none; }
+/* Visa exakt en kolumntyp per vy. */
 body[data-view="flow"] .zone-col,
+body[data-view="flow"] .places-col,
+body[data-view="zones"] .venue-col,
+body[data-view="zones"] .places-col,
+body[data-view="places"] .venue-col,
 body[data-view="places"] .zone-col { display:none; }
-body[data-view="zones"] .venue-col { display:none; }
 
 .modal-overlay { position:fixed; inset:0; z-index:50; display:flex; align-items:center;
   justify-content:center; padding:24px; background:rgba(20,12,6,.55); backdrop-filter:blur(2px); }
