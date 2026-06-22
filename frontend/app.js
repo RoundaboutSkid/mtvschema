@@ -224,6 +224,83 @@
 
 
 /* --------------------------------------------------------------------------
+ * VIEW – vy-växlare (Flöde / Zon-band / Alla platser)
+ *
+ * Skelett: läget sparas i localStorage och speglas i body[data-view] så att
+ * framtida vyer kan haka på. Än så länge är bara "Flöde" byggd; övriga lägen
+ * visar en notis men behåller flödestavlan så inget ser trasigt ut.
+ * ------------------------------------------------------------------------ */
+(function () {
+  const VIEW_KEY = 'mv_view_v1';
+  const VIEWS = [
+    { id: 'flow',   icon: '\uD83D\uDCC5', label: 'Flöde' },
+    { id: 'zones',  icon: '\uD83E\uDDED', label: 'Zon-band' },
+    { id: 'places', icon: '\uD83D\uDDC2\uFE0F', label: 'Alla platser' },
+  ];
+  const ids = VIEWS.map(v => v.id);
+  const bar = document.getElementById('mv-viewbar');
+  function load() {
+    try { const v = localStorage.getItem(VIEW_KEY); return ids.indexOf(v) !== -1 ? v : 'flow'; }
+    catch (e) { return 'flow'; }
+  }
+  function store(v) { try { localStorage.setItem(VIEW_KEY, v); } catch (e) {} }
+  function labelFor(id) { const v = VIEWS.find(x => x.id === id); return v ? v.label : id; }
+  let mode = load();
+
+  // Notis för vyer som ännu inte är byggda (skelettstadiet).
+  let note = null;
+  function ensureNote() {
+    if (note) return note;
+    const days = document.getElementById('mv-days');
+    if (!days) return null;
+    note = document.createElement('div');
+    note.className = 'view-note';
+    note.id = 'mv-view-note';
+    note.hidden = true;
+    days.parentNode.insertBefore(note, days);
+    return note;
+  }
+
+  function applyMode() {
+    document.body.dataset.view = mode;
+    if (bar) bar.querySelectorAll('.vbtn').forEach(b =>
+      b.setAttribute('aria-pressed', b.dataset.view === mode ? 'true' : 'false'));
+    if (mode === 'flow') { if (note) note.hidden = true; return; }
+    const n = ensureNote();
+    if (n) {
+      n.hidden = false;
+      n.innerHTML = '\uD83D\uDD27 <b>' + labelFor(mode) +
+        '</b>-vyn byggs i ett kommande steg. Visar <b>Flöde</b> så länge.';
+    }
+  }
+
+  function render() {
+    if (!bar) return;
+    const sw = document.createElement('div');
+    sw.className = 'viewswitch';
+    sw.setAttribute('role', 'group');
+    sw.setAttribute('aria-label', 'Välj vy');
+    VIEWS.forEach(v => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'vbtn';
+      b.dataset.view = v.id;
+      b.innerHTML = "<span aria-hidden='true'>" + v.icon + '</span> ' + v.label;
+      b.addEventListener('click', () => {
+        if (mode === v.id) return;
+        mode = v.id; store(mode); applyMode();
+      });
+      sw.appendChild(b);
+    });
+    bar.appendChild(sw);
+  }
+
+  render();
+  applyMode();
+})();
+
+
+/* --------------------------------------------------------------------------
  * STATE – favoriter, köpta biljetter, dölj (en/alla), localStorage
  * ------------------------------------------------------------------------ */
 (function () {

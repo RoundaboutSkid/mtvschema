@@ -43,6 +43,18 @@ button.reset { font:inherit; font-size:.8rem; font-weight:600; padding:6px 12px;
   padding:6px 12px; border:1px solid var(--line2); border-radius:8px; background:#fff; cursor:pointer; }
 .favtoggle input { accent-color:#d99a00; margin:0; }
 
+.viewbar { display:flex; align-items:center; gap:10px; padding:12px 24px 0; }
+.viewswitch { display:inline-flex; background:#fff; border:1px solid var(--line2);
+  border-radius:10px; padding:3px; gap:2px; }
+.viewswitch .vbtn { font:inherit; font-size:.82rem; font-weight:600; color:var(--muted);
+  background:transparent; border:0; border-radius:8px; padding:6px 12px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+.viewswitch .vbtn:hover { color:var(--ink); background:var(--bg); }
+.viewswitch .vbtn[aria-pressed="true"] { background:var(--header-bg); color:#fff; }
+.view-note { margin:12px 24px 0; padding:10px 14px; border:1px dashed var(--line2);
+  border-radius:10px; background:#fff8ec; color:var(--muted); font-size:.86rem; }
+.view-note[hidden] { display:none; }
+
 section.day { padding:16px 24px 34px; }
 section.day h2 { margin:0 0 10px; text-transform:capitalize; }
 section.day.empty { display:none; }
