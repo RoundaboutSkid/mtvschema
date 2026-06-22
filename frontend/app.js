@@ -145,7 +145,7 @@
     const pnm = el('span', 'pname'); pnm.textContent = ev.venue || ''; place.appendChild(pnm);
     n.appendChild(place);
 
-    if (ev.cat || ev.status) {
+    if (ev.cat || ev.status || ev.ticket) {
       const meta = el('div', 'meta');
       if (ev.cat) {
         const b = el('span', 'tag');
@@ -153,37 +153,29 @@
         b.appendChild(document.createTextNode(ev.cat));
         meta.appendChild(b);
       }
-      if (ev.status) {
-        if (ev.ticket) {
-          const a = el('a', 'tag ticket');
-          a.href = ev.ticket; a.target = '_blank'; a.rel = 'noopener';
-          a.textContent = '🎟 ' + ev.status;
-          meta.appendChild(a);
-        } else {
-          const s = el('span', 'tag status'); s.textContent = ev.status; meta.appendChild(s);
-        }
+      if (ev.ticket) {
+        // En enda biljett-tagg: länk till köp. Texten "Köp biljett" visas tills
+        // användaren markerat biljetten som köpt (i detaljvyn) – då blir det 🎟 ✓.
+        const a = el('a', 'tag ticket');
+        a.href = ev.ticket; a.target = '_blank'; a.rel = 'noopener';
+        const label = ev.status || 'Köp biljett';
+        const ic = el('span', 'tk'); ic.textContent = '🎟'; a.appendChild(ic);
+        const tx = el('span', 'tk-tx'); tx.textContent = ' ' + label; a.appendChild(tx);
+        a.title = 'Köp biljett (öppnas i ny flik)';
+        meta.appendChild(a);
+      } else if (ev.status) {
+        const s = el('span', 'tag status'); s.textContent = ev.status; meta.appendChild(s);
       }
       n.appendChild(meta);
     }
 
     const acts = el('div', 'event-actions');
-    const warn = el('span', 'warn');
-    warn.title = 'Favorit med biljett – inte markerad som köpt';
-    warn.textContent = '!'; acts.appendChild(warn);
-    if (ev.ticket) {
-      const bought = el('button', 'act bought');
-      bought.type = 'button'; bought.setAttribute('aria-pressed', 'false');
-      bought.title = 'Markera att du köpt biljett';
-      bought.innerHTML = TICKET_SVG; acts.appendChild(bought);
-    }
     const fav = el('button', 'act fav');
     fav.type = 'button'; fav.setAttribute('aria-pressed', 'false');
     fav.title = 'Markera som favorit'; fav.textContent = '★'; acts.appendChild(fav);
     const hide = el('button', 'act hide');
     hide.type = 'button'; hide.setAttribute('aria-pressed', 'false');
     hide.title = 'Dölj det här eventet'; hide.textContent = '✕'; acts.appendChild(hide);
-    const info = el('span', 'info'); info.setAttribute('aria-hidden', 'true');
-    info.textContent = 'i'; acts.appendChild(info);
     n.appendChild(acts);
     return n;
   }
@@ -413,9 +405,9 @@
     const favBtn = el.querySelector('.act.fav');
     if (favBtn){ favBtn.setAttribute('aria-pressed', fav ? 'true' : 'false');
       favBtn.title = fav ? 'Ta bort favorit' : 'Markera som favorit'; }
-    const buyBtn = el.querySelector('.act.bought');
-    if (buyBtn){ buyBtn.setAttribute('aria-pressed', buy ? 'true' : 'false');
-      buyBtn.title = buy ? 'Biljett markerad som köpt' : 'Markera att du köpt biljett'; }
+    const tix = el.querySelector('.tag.ticket');
+    if (tix){ tix.classList.toggle('bought', buy);
+      tix.title = buy ? 'Biljett köpt – ändra i detaljvyn' : 'Köp biljett (öppnas i ny flik)'; }
     const hideBtn = el.querySelector('.act.hide');
     if (hideBtn){ hideBtn.setAttribute('aria-pressed', hid ? 'true' : 'false');
       hideBtn.textContent = hid ? '\u21a9' : '\u2715';

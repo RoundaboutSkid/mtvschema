@@ -107,6 +107,10 @@ section.day.empty { display:none; }
 .event .tag .dot { width:7px; height:7px; border-radius:50%; background:var(--cat,#bbb); flex:0 0 auto; }
 .event a.tag.ticket { text-decoration:none; cursor:pointer; color:#fff; background:var(--header-bg); font-weight:700; }
 .event a.tag.ticket:hover { filter:brightness(1.14); }
+.event a.tag.ticket .tk { flex:0 0 auto; }
+.event a.tag.ticket.bought { background:#2e9e5b; }
+.event a.tag.ticket.bought .tk-tx { display:none; }
+.event a.tag.ticket.bought .tk::after { content:'\2009\2713'; font-weight:800; }
 .event-actions { position:absolute; top:3px; right:4px; display:flex; align-items:center;
   gap:3px; z-index:5; }
 .event-actions > * { width:17px; height:17px; border-radius:50%; display:flex; line-height:1;
@@ -116,19 +120,11 @@ section.day.empty { display:none; }
 .event:hover .event-actions .act { opacity:.9; }
 .event-actions .act:hover { opacity:1 !important; background:rgba(0,0,0,.12); color:var(--ink); }
 .event.is-fav .act.fav { opacity:1; color:#fff; background:#e0a21a; }
-.event.is-bought .act.bought { opacity:1; color:#fff; background:#2e9e5b; }
-.event .info { background:rgba(0,0,0,.06); color:var(--muted); font-weight:700; opacity:.6; pointer-events:none; }
-.event:hover .info { opacity:1; color:var(--ink); }
 .event-actions .act.hide:hover { opacity:1 !important; background:#b3261e; color:#fff; }
 .event.is-hidden { opacity:.5; filter:grayscale(.55); }
 .event.is-hidden .ttl { text-decoration:line-through; }
 .event.is-hidden .act.hide { opacity:1; color:#fff; background:#8a2018; }
-.event .warn { display:none; }
 .event.needs-ticket { border-left-color:#e11d2a; }
-.event.needs-ticket .warn { display:flex; background:#e11d2a; color:#fff; font-weight:800;
-  font-size:.82rem; box-shadow:0 0 0 2px rgba(255,255,255,.7); }
-.event-actions .act svg.tix { width:11px; height:11px; display:block; fill:currentColor; }
-.event.short .event-actions .act svg.tix { width:9px; height:9px; }
 .event.short .event-actions > * { width:15px; height:15px; font-size:.62rem; }
 .event.short { padding:1px 8px; }
 .event.short .org, .event.short .meta, .event.short .ev-place { display:none; }
@@ -202,15 +198,13 @@ body[data-view="places"] .event { background:#f6efe1; border-color:var(--line2);
 body[data-view="zones"] .event:hover,
 body[data-view="places"] .event:hover { background:#fffaf0; box-shadow:0 5px 14px rgba(0,0,0,.22); }
 body[data-view="zones"] .event .t,
-body[data-view="places"] .event .t { padding-right:52px; }
+body[data-view="places"] .event .t { padding-right:44px; }
 body[data-view="zones"] .event-actions .act,
 body[data-view="places"] .event-actions .act { opacity:0; pointer-events:none; }
 body[data-view="zones"] .event:hover .event-actions .act,
 body[data-view="places"] .event:hover .event-actions .act { opacity:.9; pointer-events:auto; }
 body[data-view="zones"] .event.is-fav .act.fav,
-body[data-view="places"] .event.is-fav .act.fav,
-body[data-view="zones"] .event.is-bought .act.bought,
-body[data-view="places"] .event.is-bought .act.bought { opacity:1; pointer-events:auto; }
+body[data-view="places"] .event.is-fav .act.fav { opacity:1; pointer-events:auto; }
 
 .modal-overlay { position:fixed; inset:0; z-index:50; display:flex; align-items:center;
   justify-content:center; padding:24px; background:rgba(20,12,6,.55); backdrop-filter:blur(2px); }
@@ -537,7 +531,7 @@ body[data-view="places"] .event.is-bought .act.bought { opacity:1; pointer-event
     const pnm = el('span', 'pname'); pnm.textContent = ev.venue || ''; place.appendChild(pnm);
     n.appendChild(place);
 
-    if (ev.cat || ev.status) {
+    if (ev.cat || ev.status || ev.ticket) {
       const meta = el('div', 'meta');
       if (ev.cat) {
         const b = el('span', 'tag');
@@ -545,37 +539,29 @@ body[data-view="places"] .event.is-bought .act.bought { opacity:1; pointer-event
         b.appendChild(document.createTextNode(ev.cat));
         meta.appendChild(b);
       }
-      if (ev.status) {
-        if (ev.ticket) {
-          const a = el('a', 'tag ticket');
-          a.href = ev.ticket; a.target = '_blank'; a.rel = 'noopener';
-          a.textContent = '🎟 ' + ev.status;
-          meta.appendChild(a);
-        } else {
-          const s = el('span', 'tag status'); s.textContent = ev.status; meta.appendChild(s);
-        }
+      if (ev.ticket) {
+        // En enda biljett-tagg: länk till köp. Texten "Köp biljett" visas tills
+        // användaren markerat biljetten som köpt (i detaljvyn) – då blir det 🎟 ✓.
+        const a = el('a', 'tag ticket');
+        a.href = ev.ticket; a.target = '_blank'; a.rel = 'noopener';
+        const label = ev.status || 'Köp biljett';
+        const ic = el('span', 'tk'); ic.textContent = '🎟'; a.appendChild(ic);
+        const tx = el('span', 'tk-tx'); tx.textContent = ' ' + label; a.appendChild(tx);
+        a.title = 'Köp biljett (öppnas i ny flik)';
+        meta.appendChild(a);
+      } else if (ev.status) {
+        const s = el('span', 'tag status'); s.textContent = ev.status; meta.appendChild(s);
       }
       n.appendChild(meta);
     }
 
     const acts = el('div', 'event-actions');
-    const warn = el('span', 'warn');
-    warn.title = 'Favorit med biljett – inte markerad som köpt';
-    warn.textContent = '!'; acts.appendChild(warn);
-    if (ev.ticket) {
-      const bought = el('button', 'act bought');
-      bought.type = 'button'; bought.setAttribute('aria-pressed', 'false');
-      bought.title = 'Markera att du köpt biljett';
-      bought.innerHTML = TICKET_SVG; acts.appendChild(bought);
-    }
     const fav = el('button', 'act fav');
     fav.type = 'button'; fav.setAttribute('aria-pressed', 'false');
     fav.title = 'Markera som favorit'; fav.textContent = '★'; acts.appendChild(fav);
     const hide = el('button', 'act hide');
     hide.type = 'button'; hide.setAttribute('aria-pressed', 'false');
     hide.title = 'Dölj det här eventet'; hide.textContent = '✕'; acts.appendChild(hide);
-    const info = el('span', 'info'); info.setAttribute('aria-hidden', 'true');
-    info.textContent = 'i'; acts.appendChild(info);
     n.appendChild(acts);
     return n;
   }
@@ -805,9 +791,9 @@ body[data-view="places"] .event.is-bought .act.bought { opacity:1; pointer-event
     const favBtn = el.querySelector('.act.fav');
     if (favBtn){ favBtn.setAttribute('aria-pressed', fav ? 'true' : 'false');
       favBtn.title = fav ? 'Ta bort favorit' : 'Markera som favorit'; }
-    const buyBtn = el.querySelector('.act.bought');
-    if (buyBtn){ buyBtn.setAttribute('aria-pressed', buy ? 'true' : 'false');
-      buyBtn.title = buy ? 'Biljett markerad som köpt' : 'Markera att du köpt biljett'; }
+    const tix = el.querySelector('.tag.ticket');
+    if (tix){ tix.classList.toggle('bought', buy);
+      tix.title = buy ? 'Biljett köpt – ändra i detaljvyn' : 'Köp biljett (öppnas i ny flik)'; }
     const hideBtn = el.querySelector('.act.hide');
     if (hideBtn){ hideBtn.setAttribute('aria-pressed', hid ? 'true' : 'false');
       hideBtn.textContent = hid ? '\u21a9' : '\u2715';
