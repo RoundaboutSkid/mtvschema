@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Medeltidsveckan – schema</title>
+  <style>/*__MV_STYLES__*/</style>
+</head>
+<body>
+  <header class="top">
+    <h1>Medeltidsveckan – schema</h1>
+    <p>Tidslinje per dag. Krockande programpunkter på samma plats visas bredvid
+      varandra; längre punkter visas som sammanhängande block. Sök och filtrera nedan.
+      Kontrollera biljettkrävande punkter mot originalprogrammet före bokning.</p>
+  </header>
+
+  <nav class="days" id="mv-nav"></nav>
+  <div class="toolbar" id="mv-toolbar"></div>
+  <main id="mv-days"></main>
+
+  <!-- Detaljvy (event-modal) -->
+  <div id="modal" class="modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+      <button class="modal-close" id="m-close" aria-label="Stäng" title="Stäng">×</button>
+      <h3 id="m-title"></h3>
+      <div class="m-meta" id="m-meta"></div>
+      <div class="m-badges" id="m-badges"></div>
+      <div class="m-desc" id="m-desc"></div>
+      <div class="m-actions">
+        <button type="button" class="m-btn fav" id="m-fav">☆ Favorit</button>
+        <button type="button" class="m-btn bought" id="m-bought" hidden>Markera biljett som köpt</button>
+        <button type="button" class="m-btn hide" id="m-hide">✕ Dölj event</button>
+      </div>
+      <a class="m-ticket" id="m-ticket" target="_blank" rel="noopener" hidden>Köp biljett ↗</a>
+    </div>
+  </div>
+
+  <!-- Utskriftsvy för favoriter -->
+  <div id="printview" class="printview" hidden>
+    <div class="pv-bar">
+      <div><h2>Mina favoriter – Medeltidsveckan</h2>
+        <div class="pv-sub" id="pv-sub"></div></div>
+      <div class="pv-actions">
+        <button type="button" class="pv-btn primary" id="pv-print">Skriv ut</button>
+        <button type="button" class="pv-btn" id="pv-close">Stäng</button>
+      </div>
+    </div>
+    <div id="pv-body"></div>
+    <div class="pv-foot">Kontrollera biljettkrävande punkter mot originalprogrammet före bokning.</div>
+  </div>
+
+  <!-- Prenumerationsdialog -->
+  <div id="submodal" class="modal-overlay" hidden>
+    <div class="modal sub" role="dialog" aria-modal="true" aria-labelledby="sub-title">
+      <button class="modal-close" id="sub-close" aria-label="Stäng" title="Stäng">×</button>
+      <h3 id="sub-title">Prenumerera på dina favoriter</h3>
+      <div class="m-meta">Din kalender hämtar dina favoriter automatiskt och uppdaterar dem
+        när programmet eller dina val ändras.</div>
+      <div class="sub-status" id="sub-status"></div>
+      <div class="sub-url">
+        <input id="sub-link" readonly aria-label="Prenumerationslänk">
+        <button type="button" class="m-btn" id="sub-copy">Kopiera</button>
+      </div>
+      <div class="m-actions">
+        <a class="m-btn primary" id="sub-open" href="#">Öppna i kalender</a>
+      </div>
+      <div class="sub-help">
+        <strong>Apple Kalender / Outlook:</strong> klicka <em>Öppna i kalender</em> ovan.<br>
+        <strong>Google Kalender:</strong> kopiera länken, gå till
+        <em>Inställningar → Lägg till kalender → Från URL</em> och klistra in den.
+        <ol>
+          <li>Markera de event du vill ha med stjärnan (★).</li>
+          <li>Prenumerera en gång – nya favoriter dyker upp automatiskt.</li>
+        </ol>
+        <span class="sub-note">Kalenderappar uppdaterar prenumerationer med några timmars
+          mellanrum, inte direkt.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dölj-dialog (en eller alla förekomster) -->
+  <div id="hidedlg" class="modal-overlay" hidden>
+    <div class="modal hidedlg" role="dialog" aria-modal="true" aria-labelledby="hd-title">
+      <button class="modal-close" id="hd-x" aria-label="Avbryt" title="Avbryt">×</button>
+      <h3 id="hd-title">Dölj event</h3>
+      <div class="hd-msg" id="hd-msg"></div>
+      <div class="m-actions">
+        <button type="button" class="m-btn danger" id="hd-all"></button>
+        <button type="button" class="m-btn" id="hd-one">Bara den här</button>
+        <button type="button" class="m-btn" id="hd-cancel">Avbryt</button>
+      </div>
+    </div>
+  </div>
+
+  <script>/*__MV_DATA__*/</script>
+  <script>/*__MV_APP__*/</script>
+</body>
+</html>
