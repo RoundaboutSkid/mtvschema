@@ -179,6 +179,18 @@
     return n;
   }
 
+  // ---- En dags flödeslista (kronologisk, mkal-stil) -----------------------
+  // Alla dagens event i en platt, tidssorterad lista. Samma event-noder används
+  // sedan i tidslinje-vyerna (VIEW.moveTo flyttar dem), så all wiring följer med.
+  function buildFlowList(d) {
+    const list = el('div', 'flow-list');
+    const items = [];
+    (d.venues || []).forEach(v => (v.events || []).forEach(ev => items.push(ev)));
+    items.sort((a, b) => (a.s - b.s) || (a.e - b.e) || (a.title < b.title ? -1 : 1));
+    items.forEach(ev => list.appendChild(buildEvent(ev)));
+    return list;
+  }
+
   // ---- En dags tavla ------------------------------------------------------
   function buildBoard(d) {
     const scroll = el('div', 'board-scroll');
@@ -201,17 +213,8 @@
     });
     ab.appendChild(ai); axis.appendChild(ab); board.appendChild(axis);
 
-    (d.venues || []).forEach(v => {
-      const col = el('div', 'venue-col');
-      col.setAttribute('data-venue', v.venue);
-      col.style.minWidth = v.minW + 'px';
-      const vh = el('div', 'venue-head'); vh.title = v.venue; vh.textContent = v.venue;
-      col.appendChild(vh);
-      const track = el('div', 'track');
-      const ti = el('div', 'track-inner'); ti.style.height = d.trackH + 'px';
-      (v.events || []).forEach(ev => ti.appendChild(buildEvent(ev)));
-      track.appendChild(ti); col.appendChild(track); board.appendChild(col);
-    });
+    // Ingen plats-timeline här längre: Flöde är en lista och Alla platser-vyn
+    // täcker tidslinjen per plats. Tavlan har bara axel + zon- + plats-kolumner.
 
     // Zon-kolumner (tomma) – VIEW flyttar in event-noderna när zon-vyn aktiveras.
     (d.zones || []).forEach(z => {
@@ -260,6 +263,7 @@
       const sec = el('section', 'day');
       sec.id = 'day-' + d.date;
       const h2 = document.createElement('h2'); h2.textContent = d.title; sec.appendChild(h2);
+      sec.appendChild(buildFlowList(d));
       sec.appendChild(buildBoard(d));
       main.appendChild(sec);
     });
@@ -321,6 +325,7 @@
   // kolumner så att all befintlig wiring (favoriter, modal, filter) följer med.
   let placed = 'flow';
   function placeEvent(node, target) {
+    if (target === 'flow') return;   // listrader är statiska – CSS sköter layouten
     const zone = target === 'zones';
     const L = zone ? node.dataset.zleft : node.dataset.vleft;
     const W = zone ? node.dataset.zwidth : node.dataset.vwidth;
@@ -328,15 +333,20 @@
     if (W != null) node.style.width = 'calc(' + W + '% - 3px)';
   }
   function destFor(day, target, node) {
+    if (target === 'flow') return day.querySelector('.flow-list');
     if (target === 'zones')
       return day.querySelector('.zone-col[data-zone="' + (node.dataset.zone || 'Z?') + '"] .track-inner');
-    const sel = target === 'places' ? '.places-col' : '.venue-col';
-    return day.querySelector(sel + '[data-venue="' + node.dataset.venue + '"] .track-inner');
+    return day.querySelector('.places-col[data-venue="' + node.dataset.venue + '"] .track-inner');
   }
   function moveTo(target) {
     if (placed === target) return;
     document.querySelectorAll('section.day').forEach(day => {
-      day.querySelectorAll('.event').forEach(node => {
+      let nodes = Array.prototype.slice.call(day.querySelectorAll('.event'));
+      // Flödet ska vara kronologiskt – sortera innan de läggs tillbaka i listan.
+      if (target === 'flow') nodes.sort((a, b) =>
+        (+a.dataset.s - +b.dataset.s) || (+a.dataset.e - +b.dataset.e) ||
+        (a.dataset.title < b.dataset.title ? -1 : 1));
+      nodes.forEach(node => {
         const dest = destFor(day, target, node);
         if (dest) { dest.appendChild(node); placeEvent(node, target); }
       });
@@ -647,12 +657,6 @@
     }
     if (hiddenCountEl) hiddenCountEl.textContent = hiddenTotal;
     if (unhideAll) unhideAll.style.display = hiddenTotal ? '' : 'none';
-    // Hide venue columns with no visible events (or unchecked venue).
-    document.querySelectorAll('.venue-col').forEach(col => {
-      const venueOn = activeVenues.has(col.dataset.venue);
-      const hasVisible = venueOn && col.querySelector('.event:not(.hidden)') !== null;
-      col.classList.toggle('hidden', !hasVisible);
-    });
     // Hide zone columns with no visible events (zon-band-vyn).
     document.querySelectorAll('.zone-col').forEach(col => {
       const hasVisible = col.querySelector('.event:not(.hidden)') !== null;

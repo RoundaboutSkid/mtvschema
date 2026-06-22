@@ -162,6 +162,38 @@ body[data-view="zones"] .venue-col,
 body[data-view="zones"] .places-col,
 body[data-view="places"] .venue-col,
 body[data-view="places"] .zone-col { display:none; }
+
+/* Flödesvy: kronologisk lista (mkal-stil) – inga tidslinjer eller höjder.
+   Samma event-noder som tidslinjerna; här gör CSS om dem till lugna listrader. */
+.flow-list { display:none; }
+body[data-view="flow"] .board-scroll { display:none; }
+body[data-view="flow"] .flow-list { display:block; background:#fff;
+  border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+body[data-view="flow"] .event {
+  position:static; top:auto; left:auto; height:auto !important; width:auto !important;
+  display:flex; flex-wrap:wrap; align-items:baseline; column-gap:12px; row-gap:3px;
+  border:0; border-bottom:1px solid var(--line); border-left:4px solid var(--cat,#bbb);
+  border-radius:0; box-shadow:none; padding:11px 16px 11px 14px; }
+body[data-view="flow"] .flow-list .event:last-child { border-bottom:0; }
+body[data-view="flow"] .event:hover { background:#fff8ee; box-shadow:none; }
+body[data-view="flow"] .event .t { order:0; flex:0 0 auto; min-width:108px;
+  font-size:.84rem; font-weight:700; color:var(--ink); letter-spacing:0; }
+body[data-view="flow"] .event .ttl { order:1; flex:0 1 auto; font-size:.95rem; }
+body[data-view="flow"] .event .ev-place { order:2; display:inline-flex; flex:0 0 auto;
+  font-size:.8rem; font-weight:600; color:var(--muted); white-space:normal; margin:0; }
+body[data-view="flow"] .event .org { order:3; flex:0 0 auto; display:block;
+  font-size:.78rem; color:var(--muted); }
+body[data-view="flow"] .event .meta { order:4; flex:0 0 auto; margin-top:0; }
+body[data-view="flow"] .event .event-actions { order:5; position:static; flex:0 0 auto;
+  margin-left:auto; align-self:center; }
+body[data-view="flow"] .event .event-actions .act { opacity:.75; }
+/* Listan bryr sig inte om kort varaktighet – visa allt innehåll på raden. */
+body[data-view="flow"] .event.short { padding:11px 16px 11px 14px; }
+body[data-view="flow"] .event.short .ttl { font-size:.95rem; }
+body[data-view="flow"] .event.short .org { display:block; }
+body[data-view="flow"] .event.short .meta { display:flex; }
+body[data-view="flow"] .event.short .ev-place { display:inline-flex; }
+
 /* Komprimerat läge: smalare kolumner -> mindre text så korten förblir läsbara. */
 body[data-view="places"][data-compact="1"] .event { font-size:.68rem; padding:2px 4px; }
 body[data-view="places"][data-compact="1"] .event .t { font-size:.62rem; }
@@ -528,6 +560,18 @@ body[data-view="places"][data-compact="1"] .venue-head { font-size:.7rem; paddin
     return n;
   }
 
+  // ---- En dags flödeslista (kronologisk, mkal-stil) -----------------------
+  // Alla dagens event i en platt, tidssorterad lista. Samma event-noder används
+  // sedan i tidslinje-vyerna (VIEW.moveTo flyttar dem), så all wiring följer med.
+  function buildFlowList(d) {
+    const list = el('div', 'flow-list');
+    const items = [];
+    (d.venues || []).forEach(v => (v.events || []).forEach(ev => items.push(ev)));
+    items.sort((a, b) => (a.s - b.s) || (a.e - b.e) || (a.title < b.title ? -1 : 1));
+    items.forEach(ev => list.appendChild(buildEvent(ev)));
+    return list;
+  }
+
   // ---- En dags tavla ------------------------------------------------------
   function buildBoard(d) {
     const scroll = el('div', 'board-scroll');
@@ -550,17 +594,8 @@ body[data-view="places"][data-compact="1"] .venue-head { font-size:.7rem; paddin
     });
     ab.appendChild(ai); axis.appendChild(ab); board.appendChild(axis);
 
-    (d.venues || []).forEach(v => {
-      const col = el('div', 'venue-col');
-      col.setAttribute('data-venue', v.venue);
-      col.style.minWidth = v.minW + 'px';
-      const vh = el('div', 'venue-head'); vh.title = v.venue; vh.textContent = v.venue;
-      col.appendChild(vh);
-      const track = el('div', 'track');
-      const ti = el('div', 'track-inner'); ti.style.height = d.trackH + 'px';
-      (v.events || []).forEach(ev => ti.appendChild(buildEvent(ev)));
-      track.appendChild(ti); col.appendChild(track); board.appendChild(col);
-    });
+    // Ingen plats-timeline här längre: Flöde är en lista och Alla platser-vyn
+    // täcker tidslinjen per plats. Tavlan har bara axel + zon- + plats-kolumner.
 
     // Zon-kolumner (tomma) – VIEW flyttar in event-noderna när zon-vyn aktiveras.
     (d.zones || []).forEach(z => {
@@ -609,6 +644,7 @@ body[data-view="places"][data-compact="1"] .venue-head { font-size:.7rem; paddin
       const sec = el('section', 'day');
       sec.id = 'day-' + d.date;
       const h2 = document.createElement('h2'); h2.textContent = d.title; sec.appendChild(h2);
+      sec.appendChild(buildFlowList(d));
       sec.appendChild(buildBoard(d));
       main.appendChild(sec);
     });
@@ -670,6 +706,7 @@ body[data-view="places"][data-compact="1"] .venue-head { font-size:.7rem; paddin
   // kolumner så att all befintlig wiring (favoriter, modal, filter) följer med.
   let placed = 'flow';
   function placeEvent(node, target) {
+    if (target === 'flow') return;   // listrader är statiska – CSS sköter layouten
     const zone = target === 'zones';
     const L = zone ? node.dataset.zleft : node.dataset.vleft;
     const W = zone ? node.dataset.zwidth : node.dataset.vwidth;
@@ -677,15 +714,20 @@ body[data-view="places"][data-compact="1"] .venue-head { font-size:.7rem; paddin
     if (W != null) node.style.width = 'calc(' + W + '% - 3px)';
   }
   function destFor(day, target, node) {
+    if (target === 'flow') return day.querySelector('.flow-list');
     if (target === 'zones')
       return day.querySelector('.zone-col[data-zone="' + (node.dataset.zone || 'Z?') + '"] .track-inner');
-    const sel = target === 'places' ? '.places-col' : '.venue-col';
-    return day.querySelector(sel + '[data-venue="' + node.dataset.venue + '"] .track-inner');
+    return day.querySelector('.places-col[data-venue="' + node.dataset.venue + '"] .track-inner');
   }
   function moveTo(target) {
     if (placed === target) return;
     document.querySelectorAll('section.day').forEach(day => {
-      day.querySelectorAll('.event').forEach(node => {
+      let nodes = Array.prototype.slice.call(day.querySelectorAll('.event'));
+      // Flödet ska vara kronologiskt – sortera innan de läggs tillbaka i listan.
+      if (target === 'flow') nodes.sort((a, b) =>
+        (+a.dataset.s - +b.dataset.s) || (+a.dataset.e - +b.dataset.e) ||
+        (a.dataset.title < b.dataset.title ? -1 : 1));
+      nodes.forEach(node => {
         const dest = destFor(day, target, node);
         if (dest) { dest.appendChild(node); placeEvent(node, target); }
       });
@@ -996,12 +1038,6 @@ body[data-view="places"][data-compact="1"] .venue-head { font-size:.7rem; paddin
     }
     if (hiddenCountEl) hiddenCountEl.textContent = hiddenTotal;
     if (unhideAll) unhideAll.style.display = hiddenTotal ? '' : 'none';
-    // Hide venue columns with no visible events (or unchecked venue).
-    document.querySelectorAll('.venue-col').forEach(col => {
-      const venueOn = activeVenues.has(col.dataset.venue);
-      const hasVisible = venueOn && col.querySelector('.event:not(.hidden)') !== null;
-      col.classList.toggle('hidden', !hasVisible);
-    });
     // Hide zone columns with no visible events (zon-band-vyn).
     document.querySelectorAll('.zone-col').forEach(col => {
       const hasVisible = col.querySelector('.event:not(.hidden)') !== null;

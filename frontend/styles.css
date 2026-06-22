@@ -156,6 +156,38 @@ body[data-view="zones"] .venue-col,
 body[data-view="zones"] .places-col,
 body[data-view="places"] .venue-col,
 body[data-view="places"] .zone-col { display:none; }
+
+/* Flödesvy: kronologisk lista (mkal-stil) – inga tidslinjer eller höjder.
+   Samma event-noder som tidslinjerna; här gör CSS om dem till lugna listrader. */
+.flow-list { display:none; }
+body[data-view="flow"] .board-scroll { display:none; }
+body[data-view="flow"] .flow-list { display:block; background:#fff;
+  border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+body[data-view="flow"] .event {
+  position:static; top:auto; left:auto; height:auto !important; width:auto !important;
+  display:flex; flex-wrap:wrap; align-items:baseline; column-gap:12px; row-gap:3px;
+  border:0; border-bottom:1px solid var(--line); border-left:4px solid var(--cat,#bbb);
+  border-radius:0; box-shadow:none; padding:11px 16px 11px 14px; }
+body[data-view="flow"] .flow-list .event:last-child { border-bottom:0; }
+body[data-view="flow"] .event:hover { background:#fff8ee; box-shadow:none; }
+body[data-view="flow"] .event .t { order:0; flex:0 0 auto; min-width:108px;
+  font-size:.84rem; font-weight:700; color:var(--ink); letter-spacing:0; }
+body[data-view="flow"] .event .ttl { order:1; flex:0 1 auto; font-size:.95rem; }
+body[data-view="flow"] .event .ev-place { order:2; display:inline-flex; flex:0 0 auto;
+  font-size:.8rem; font-weight:600; color:var(--muted); white-space:normal; margin:0; }
+body[data-view="flow"] .event .org { order:3; flex:0 0 auto; display:block;
+  font-size:.78rem; color:var(--muted); }
+body[data-view="flow"] .event .meta { order:4; flex:0 0 auto; margin-top:0; }
+body[data-view="flow"] .event .event-actions { order:5; position:static; flex:0 0 auto;
+  margin-left:auto; align-self:center; }
+body[data-view="flow"] .event .event-actions .act { opacity:.75; }
+/* Listan bryr sig inte om kort varaktighet – visa allt innehåll på raden. */
+body[data-view="flow"] .event.short { padding:11px 16px 11px 14px; }
+body[data-view="flow"] .event.short .ttl { font-size:.95rem; }
+body[data-view="flow"] .event.short .org { display:block; }
+body[data-view="flow"] .event.short .meta { display:flex; }
+body[data-view="flow"] .event.short .ev-place { display:inline-flex; }
+
 /* Komprimerat läge: smalare kolumner -> mindre text så korten förblir läsbara. */
 body[data-view="places"][data-compact="1"] .event { font-size:.68rem; padding:2px 4px; }
 body[data-view="places"][data-compact="1"] .event .t { font-size:.62rem; }
