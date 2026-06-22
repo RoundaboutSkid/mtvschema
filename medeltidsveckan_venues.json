@@ -66,6 +66,14 @@
     "Norderport":                                   { "typ": "port", "zon": "Z5", "punkt": 5 },
     "Nordeport":                                    { "typ": "port", "zon": "Z5", "punkt": 5 },
     "Österport":                                    { "typ": "port", "zon": "Z5", "punkt": 19 },
-    "Skolporten":                                   { "typ": "port", "zon": "Z5", "punkt": null }
+    "Skolporten":                                   { "typ": "port", "zon": "Z5", "punkt": null },
+    "Jungfrutornet":                                { "typ": "port", "zon": "Z5", "punkt": null },
+    "Kruttornet":                                   { "typ": "port", "zon": "Z5", "punkt": null },
+    "Kärleksporten":                                { "typ": "port", "zon": "Z5", "punkt": null },
+    "Murfallet":                                    { "typ": "ovrigt", "zon": "Z5", "punkt": null },
+    "Östergravar":                                  { "typ": "falt", "zon": "Z5", "punkt": 10 },
+    "Lokebron":                                     { "typ": "ovrigt", "zon": "Z5", "punkt": null },
+
+    "Okänd plats":                                  { "typ": "ovrigt", "zon": null, "punkt": null }
   }
 }
