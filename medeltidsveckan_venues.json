@@ -1,0 +1,71 @@
+{
+  "_doc": "Redigera 'typ', 'zon' och ev. 'punkt' for varje plats under 'platser'. Tillatna varden star i 'typer' och 'zoner' nedan. 'punkt' (1-27) ar platsen pa Medeltidsveckans officiella karta - frivilligt, for en ev. framtida kartvy; null = okand. Andra INTE platsnamnen (nycklarna) - de maste matcha datan exakt. Denna fil driver bade platsikoner (flodesvyn) och zon-band-vyn.",
+  "typer": {
+    "kyrka": "⛪",
+    "ruin": "🏛️",
+    "scen": "🎭",
+    "arena": "⚔️",
+    "marknad": "🎪",
+    "falt": "🌳",
+    "torg": "⛲",
+    "port": "🚪",
+    "restaurang": "🍽️",
+    "museum": "🏺",
+    "ovrigt": "📍"
+  },
+  "zoner": {
+    "Z1": "Strandgärdet (festivalkärnan)",
+    "Z2": "Paviljongsplan & Sagoängen",
+    "Z3": "Innerstaden – väst (ruinstråket)",
+    "Z4": "Innerstaden – öst (torg & museum)",
+    "Z5": "Portar, mur & utkanter"
+  },
+  "platser": {
+    "Festivalområde Strandgärdet":                  { "typ": "marknad", "zon": "Z1", "punkt": 1 },
+    "Russtibus Scen":                               { "typ": "scen", "zon": "Z1", "punkt": 1 },
+    "Medeltidsarenan":                              { "typ": "arena", "zon": "Z1", "punkt": 1 },
+    "Hantverkspaviljongen Strandgärdet":            { "typ": "marknad", "zon": "Z1", "punkt": 1 },
+    "Strandgärdet":                                 { "typ": "marknad", "zon": "Z1", "punkt": 1 },
+    "Gutars Bågskyttars läger":                     { "typ": "falt", "zon": "Z1", "punkt": 1 },
+    "Fightingarenan":                               { "typ": "arena", "zon": "Z1", "punkt": 2 },
+    "Snäckgärdsporten":                             { "typ": "port", "zon": "Z1", "punkt": 2 },
+    "Söderport":                                    { "typ": "port", "zon": "Z1", "punkt": null },
+
+    "Festivalområde Paviljongsplan":                { "typ": "marknad", "zon": "Z2", "punkt": 6 },
+    "Sagoängen":                                    { "typ": "falt", "zon": "Z2", "punkt": 6 },
+    "Forum Vulgaris":                               { "typ": "ovrigt", "zon": "Z2", "punkt": 7 },
+    "Köksscenen":                                   { "typ": "scen", "zon": "Z2", "punkt": 7 },
+    "Visitor Center":                               { "typ": "ovrigt", "zon": "Z2", "punkt": 7 },
+
+    "S:t Nicolai":                                  { "typ": "ruin", "zon": "Z3", "punkt": 8 },
+    "Bistra Haren":                                 { "typ": "restaurang", "zon": "Z3", "punkt": 8 },
+    "Frimis krog":                                  { "typ": "restaurang", "zon": "Z3", "punkt": 8 },
+    "Helge And":                                    { "typ": "ruin", "zon": "Z3", "punkt": 9 },
+    "Visby domkyrka Sankta Maria":                  { "typ": "kyrka", "zon": "Z3", "punkt": 11 },
+    "Församlingshuset Visby domkyrka Sankta Maria": { "typ": "kyrka", "zon": "Z3", "punkt": 11 },
+    "S:t Clemens":                                  { "typ": "ruin", "zon": "Z3", "punkt": 12 },
+    "Kapitelhusgården":                             { "typ": "restaurang", "zon": "Z3", "punkt": 14 },
+    "Klosterlängan":                                { "typ": "ruin", "zon": "Z3", "punkt": 14 },
+    "Gamla Apoteket":                               { "typ": "scen", "zon": "Z3", "punkt": 17 },
+
+    "S:t Lars":                                     { "typ": "ruin", "zon": "Z4", "punkt": 15 },
+    "Drotten":                                      { "typ": "ruin", "zon": "Z4", "punkt": 15 },
+    "Teatern, Strand Hotel":                        { "typ": "scen", "zon": "Z4", "punkt": 16 },
+    "S:ta Karin":                                   { "typ": "ruin", "zon": "Z4", "punkt": 18 },
+    "Korsbetingen, Östra Hansegatan 17":            { "typ": "ovrigt", "zon": "Z4", "punkt": 18 },
+    "S:t Hansskolans aula":                         { "typ": "museum", "zon": "Z4", "punkt": 20 },
+    "Sävesalen / Gotlands Museum":                  { "typ": "museum", "zon": "Z4", "punkt": 21 },
+    "Packhusplan":                                  { "typ": "torg", "zon": "Z4", "punkt": 21 },
+    "Almedalen":                                    { "typ": "falt", "zon": "Z4", "punkt": 22 },
+    "Folkets bio Betty":                            { "typ": "scen", "zon": "Z4", "punkt": 23 },
+    "Wisby Hof":                                    { "typ": "restaurang", "zon": "Z4", "punkt": 25 },
+    "Södertorg":                                    { "typ": "torg", "zon": "Z4", "punkt": 25 },
+
+    "S:t Göran under Kastanjen":                    { "typ": "ruin", "zon": "Z5", "punkt": 3 },
+    "Nordergravar":                                 { "typ": "falt", "zon": "Z5", "punkt": 5 },
+    "Norderport":                                   { "typ": "port", "zon": "Z5", "punkt": 5 },
+    "Nordeport":                                    { "typ": "port", "zon": "Z5", "punkt": 5 },
+    "Österport":                                    { "typ": "port", "zon": "Z5", "punkt": 19 },
+    "Skolporten":                                   { "typ": "port", "zon": "Z5", "punkt": null }
+  }
+}
