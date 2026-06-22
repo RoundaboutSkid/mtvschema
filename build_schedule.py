@@ -50,6 +50,9 @@ except ImportError:  # pragma: no cover
 PX_PER_MIN = 1.3          # vertical scale: 1 minute -> px
 NO_CATEGORY = "__none__"  # sentinel for events without a category
 CONFIG_FILENAME = "medeltidsveckan_config.json"  # persists e.g. the subscription endpoint
+VENUES_FILENAME = "medeltidsveckan_venues.json"  # editable place→type/zone/map-point table
+DEFAULT_VENUE_TYPE = "ovrigt"
+DEFAULT_VENUE_ICON = "\U0001F4CD"  # 📍 fallback for places missing from the table
 FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"  # editable HTML/CSS/JS sources
 
 
@@ -146,6 +149,38 @@ def _day_record(layout: DayLayout) -> dict:
     }
 
 
+def _load_venue_meta() -> dict:
+    """Load the editable place→type/zone/map-point table next to the scripts.
+
+    Returns ``{"types": {typ: icon}, "zones": [{"id","label"}…], "places":
+    {venue: {"typ","icon","zon","punkt"}}}``. A missing or invalid file yields
+    empty maps so the page still builds and the client falls back to a pin icon.
+    """
+    path = Path(__file__).resolve().parent / VENUES_FILENAME
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return {"types": {}, "zones": [], "places": {}}
+    if not isinstance(data, dict):
+        return {"types": {}, "zones": [], "places": {}}
+    types = data.get("typer", {}) or {}
+    zoner = data.get("zoner", {}) or {}
+    platser = data.get("platser", {}) or {}
+    zones = [{"id": k, "label": v} for k, v in zoner.items()]
+    places: dict[str, dict] = {}
+    for name, info in platser.items():
+        if not isinstance(info, dict):
+            continue
+        typ = info.get("typ") or DEFAULT_VENUE_TYPE
+        places[name] = {
+            "typ": typ,
+            "icon": types.get(typ, DEFAULT_VENUE_ICON),
+            "zon": info.get("zon"),
+            "punkt": info.get("punkt"),
+        }
+    return {"types": types, "zones": zones, "places": places}
+
+
 def _data_payload(events: list[Event], slot_minutes: int, ics_endpoint: str) -> dict:
     """Whole-programme data the client renders from: filters + per-day layout."""
     by_day: dict[str, list[Event]] = defaultdict(list)
@@ -159,10 +194,31 @@ def _data_payload(events: list[Event], slot_minutes: int, ics_endpoint: str) -> 
         cat_items.append({"val": NO_CATEGORY, "label": "Utan kategori", "color": DEFAULT_CATEGORY_COLOR})
     venues = sorted({e.venue for e in events}, key=lambda s: (s == "Okänd plats", s.lower()))
 
+    meta = _load_venue_meta()
+    places = meta["places"]
+    venue_meta: dict[str, dict] = {}
+    unknown: list[str] = []
+    for v in venues:
+        info = places.get(v)
+        if info is None:
+            unknown.append(v)
+            venue_meta[v] = {"typ": DEFAULT_VENUE_TYPE, "icon": DEFAULT_VENUE_ICON,
+                             "zon": None, "punkt": None}
+        else:
+            venue_meta[v] = info
+    if unknown:
+        print(f"OBS: {len(unknown)} plats(er) saknas i {VENUES_FILENAME} "
+              f"(får standardikon {DEFAULT_VENUE_ICON}, ingen zon):")
+        for v in unknown:
+            print(f"  • {v}")
+
     return {
         "icsEndpoint": ics_endpoint or "",
         "cats": cat_items,
         "venues": venues,
+        "venueMeta": venue_meta,
+        "types": meta["types"],
+        "zones": meta["zones"],
         "days": [_day_record(l) for l in layouts],
     }
 
