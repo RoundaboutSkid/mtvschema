@@ -103,7 +103,8 @@
   function buildEvent(ev) {
     const n = el('div', 'event' + (ev.short ? ' short' : ''));
     n.style.cssText = 'top:' + ev.top + 'px;height:' + ev.height + 'px;left:' + ev.left +
-      '%;width:calc(' + ev.width + '% - 3px);background:#' + ev.color + ';';
+      '%;width:calc(' + ev.width + '% - 3px);';
+    n.style.setProperty('--cat', '#' + ev.color);
     n.title = ev.tooltip || '';
     n.setAttribute('data-id', ev.id);
     n.setAttribute('data-s', ev.s);
@@ -138,16 +139,19 @@
     if (ev.cat || ev.status) {
       const meta = el('div', 'meta');
       if (ev.cat) {
-        const b = el('span', 'badge'); b.textContent = ev.cat; meta.appendChild(b);
+        const b = el('span', 'tag');
+        b.appendChild(el('i', 'dot'));
+        b.appendChild(document.createTextNode(ev.cat));
+        meta.appendChild(b);
       }
       if (ev.status) {
         if (ev.ticket) {
-          const a = el('a', 'badge ticket');
+          const a = el('a', 'tag ticket');
           a.href = ev.ticket; a.target = '_blank'; a.rel = 'noopener';
-          a.textContent = ev.status + ' ↗';
+          a.textContent = '🎟 ' + ev.status;
           meta.appendChild(a);
         } else {
-          const s = el('span', 'badge'); s.textContent = ev.status; meta.appendChild(s);
+          const s = el('span', 'tag status'); s.textContent = ev.status; meta.appendChild(s);
         }
       }
       n.appendChild(meta);
