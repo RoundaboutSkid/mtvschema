@@ -292,6 +292,7 @@ def _data_payload(events: list[Event], slot_minutes: int, ics_endpoint: str) -> 
         "icon": venue_meta.get(v, {}).get("icon", DEFAULT_VENUE_ICON),
         "laneCount": weekly_max.get(v, 1),
         "minW": max(132, weekly_max.get(v, 1) * 120),
+        "minWc": max(72, weekly_max.get(v, 1) * 60),
     } for v in venues]
 
     return {

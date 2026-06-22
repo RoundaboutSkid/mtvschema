@@ -231,6 +231,8 @@
     (DATA.places || []).forEach(pl => {
       const col = el('div', 'places-col');
       col.setAttribute('data-venue', pl.venue);
+      col.dataset.wFull = pl.minW;
+      col.dataset.wCompact = pl.minWc || pl.minW;
       col.style.flex = '0 0 ' + pl.minW + 'px';
       col.style.width = pl.minW + 'px';
       const vh = el('div', 'venue-head'); vh.title = pl.venue;
@@ -288,11 +290,27 @@
   function store(v) { try { localStorage.setItem(VIEW_KEY, v); } catch (e) {} }
   let mode = load();
 
+  // Kompakt-läge: smalare platskolumner (gäller bara Alla platser-vyn).
+  const COMPACT_KEY = 'mv_compact_v1';
+  function loadCompact() { try { return localStorage.getItem(COMPACT_KEY) === '1'; } catch (e) { return false; } }
+  let compact = loadCompact();
+  let compactBtn = null;
+  function applyCompact() {
+    document.body.dataset.compact = compact ? '1' : '0';
+    document.querySelectorAll('.places-col').forEach(col => {
+      const w = (compact ? col.dataset.wCompact : col.dataset.wFull) || col.dataset.wFull;
+      if (w) { col.style.flex = '0 0 ' + w + 'px'; col.style.width = w + 'px'; }
+    });
+    if (compactBtn) compactBtn.setAttribute('aria-pressed', compact ? 'true' : 'false');
+  }
+
   function applyMode() {
     document.body.dataset.view = mode;
     if (bar) bar.querySelectorAll('.vbtn').forEach(b =>
       b.setAttribute('aria-pressed', b.dataset.view === mode ? 'true' : 'false'));
+    if (compactBtn) compactBtn.hidden = (mode !== 'places');
     moveTo(mode);
+    if (mode === 'places') applyCompact();
   }
 
   // Flytta (inte återskapa) event-noderna mellan plats-, zon- och alla-platser-
@@ -343,6 +361,20 @@
       sw.appendChild(b);
     });
     bar.appendChild(sw);
+
+    compactBtn = document.createElement('button');
+    compactBtn.type = 'button';
+    compactBtn.className = 'vtoggle';
+    compactBtn.hidden = true;
+    compactBtn.setAttribute('aria-pressed', compact ? 'true' : 'false');
+    compactBtn.title = 'Smalare kolumner – mindre sidoskroll';
+    compactBtn.innerHTML = "<span aria-hidden='true'>\u2194</span> Kompakt";
+    compactBtn.addEventListener('click', () => {
+      compact = !compact;
+      try { localStorage.setItem(COMPACT_KEY, compact ? '1' : '0'); } catch (e) {}
+      applyCompact();
+    });
+    bar.appendChild(compactBtn);
   }
 
   render();

@@ -51,6 +51,12 @@ button.reset { font:inherit; font-size:.8rem; font-weight:600; padding:6px 12px;
   display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
 .viewswitch .vbtn:hover { color:var(--ink); background:var(--bg); }
 .viewswitch .vbtn[aria-pressed="true"] { background:var(--header-bg); color:#fff; }
+.vtoggle { font:inherit; font-size:.82rem; font-weight:600; color:var(--muted); background:#fff;
+  border:1px solid var(--line2); border-radius:10px; padding:6px 12px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+.vtoggle:hover { color:var(--ink); }
+.vtoggle[aria-pressed="true"] { background:var(--header-bg); color:#fff; border-color:var(--header-bg); }
+.vtoggle[hidden] { display:none; }
 
 section.day { padding:16px 24px 34px; }
 section.day h2 { margin:0 0 10px; text-transform:capitalize; }
@@ -149,6 +155,12 @@ body[data-view="zones"] .venue-col,
 body[data-view="zones"] .places-col,
 body[data-view="places"] .venue-col,
 body[data-view="places"] .zone-col { display:none; }
+/* Komprimerat läge: smalare kolumner -> mindre text så korten förblir läsbara. */
+body[data-view="places"][data-compact="1"] .event { font-size:.68rem; padding:2px 4px; }
+body[data-view="places"][data-compact="1"] .event .t { font-size:.62rem; }
+body[data-view="places"][data-compact="1"] .event .org,
+body[data-view="places"][data-compact="1"] .event .meta { display:none; }
+body[data-view="places"][data-compact="1"] .venue-head { font-size:.7rem; padding:3px 5px; }
 
 .modal-overlay { position:fixed; inset:0; z-index:50; display:flex; align-items:center;
   justify-content:center; padding:24px; background:rgba(20,12,6,.55); backdrop-filter:blur(2px); }
