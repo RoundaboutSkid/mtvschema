@@ -20,7 +20,8 @@ och läs/skriv-hjälpare. Den körs inte direkt.
 - `medeltidsveckan_events.csv` – samma data som CSV för egen justering.
 - `medeltidsveckan_inofficial.json` / `.csv` – det inofficiella programmet
   (skapas av `fetch_inofficial.py`), slås automatiskt ihop vid bygget.
-- `medeltidsveckan_schema.html` – interaktiv tidslinje per dag.
+- `medeltidsveckan_schema.html` – interaktivt schema med tre vyer (flöde,
+  zon-band och alla platser).
 - `medeltidsveckan_schema.xlsx` – samma layout som Excel, en flik per dag.
 
 ## Installation
@@ -100,6 +101,46 @@ titel matchas exakt). Kör sedan `python build_schedule.py` igen – datafilen r
 inte. Du kan också ge titlar direkt på kommandoraden med `--exclude`.
 
 
+## Tre vyer
+
+Högst upp i schemat finns en **vy-växlare** med tre sätt att läsa programmet.
+Valet sparas i webbläsaren så att schemat öppnas i samma vy nästa gång.
+
+- **📅 Flöde** – en lugn, kronologisk lista per dag (en rad per programpunkt med
+  tid, plats, titel och arrangör). Bäst för att bara bläddra och läsa.
+- **🧭 Zon-band** – en tidslinje där programpunkterna grupperas i **zoner**
+  (områden i Visby) i stället för enskilda platser. Varje kort visar sin plats
+  med ikon.
+- **🗂️ Alla platser** – en tidslinje med **en kolumn per plats**, för dig som
+  vill se exakt vad som händer var.
+
+Zon-band och Alla platser ritas som **en enda sammanhållen tavla** där alla
+dagar ligger staplade i samma lodräta scroll:
+
+- **Plats-/zonrubrikerna** högst upp ligger kvar (sticky) medan du scrollar.
+- **Vänsteraxeln** visar både **veckodag/datum** och **klockslag**, så du alltid
+  ser var i veckan du befinner dig. Varje ny dag inleds med ett tydligt dagband.
+- **Dag-knapparna** högst upp hoppar till rätt dag genom att scrolla tavlan dit.
+- Korten har **konstant bredd** oavsett hur många parallella spår en plats/zon
+  har, så layouten känns lugn och förutsägbar.
+
+## Platser, zoner och ikoner
+
+Vilken **zon** och vilken **ikon** varje plats får styrs av den redigerbara
+tabellen [`medeltidsveckan_venues.json`](medeltidsveckan_venues.json):
+
+- **`typer`** – en ikon (emoji) per platstyp, t.ex. `scen` 🎭, `kyrka` ⛪ eller
+  `torg` ⛲. Ikonen visas på korten (flödet) och i platsrubrikerna.
+- **`zoner`** – zonernas id (`Z1`–`Z5`) och namn. Zon-band-vyn grupperar och
+  färgar programmet efter dessa.
+- **`platser`** – kopplar varje plats till en `typ` (för ikonen) och en `zon`
+  (samt en valfri kart`punkt` 1–27 för en framtida kartvy).
+
+Ändra **inte** platsnamnen (nycklarna) – de måste matcha datan exakt. Saknas en
+plats i filen får den en standardikon (📍) och hamnar i *Övrigt*; en notis skrivs
+ut när du bygger schemat så att du ser vilka platser som behöver fyllas i. Kör
+`python build_schedule.py` igen efter ändringar.
+
 ## Sök och filtrera i schemat
 
 HTML-schemat är en **fristående fil** (ingen server eller webbapp behövs) med
@@ -123,9 +164,10 @@ Varje programpunkt visar nu hela inforutan från originalprogrammet:
   ett utdrag ur beskrivningen) som webbläsarens egen tooltip.
 - **Klicka** på ett event för att öppna en ruta med den **fullständiga
   beskrivningen**. Stäng med krysset, `Esc` eller genom att klicka utanför.
-- Event som kräver biljett har ett **“Köp biljett ↗”**-chip som är en direkt
-  länk till biljettsidan (öppnas i ny flik). Samma länk finns även som knapp i
-  detaljrutan. Sökningen matchar också mot beskrivningstexten.
+- Event som kräver biljett visas med en **🎟 biljett-ikon** i hörnet. I
+  detaljrutan finns en **“Köp biljett ↗”**-knapp som länkar direkt till
+  biljettsidan (öppnas i ny flik). Sökningen matchar också mot
+  beskrivningstexten.
 
 Beskrivning och biljettlänk följer med i datafilerna och i Excel-arket
 (kolumnen `ticket_url`).
@@ -137,13 +179,14 @@ Markeringarna sparas i webbläsaren (`localStorage`) och ligger kvar mellan
 besök – de följer **inte** med datafilerna och delas inte med andra.
 
 - **★ Favorit** – klicka på stjärnan i eventets övre högra hörn (eller knappen i
-  detaljrutan). Favoriter får en gul stjärna som alltid syns.
-- **Biljett-ikon** – för event med biljett finns en liten biljettsymbol.
-  Markerar du den som köpt blir biljetten grön och eventet blir **automatiskt
-  favorit** om det inte redan var det.
-- **Röd varning (!)** – ett event som är favorit *och* har biljett *och* ännu
-  inte är markerat som köpt får ett rött utropstecken och en röd kantmarkering,
-  så att du snabbt ser vilka biljetter du fortfarande behöver köpa.
+  detaljrutan). Stjärnan är **alltid synlig** och blir gul när eventet är
+  favoritmarkerat.
+- **🎟 Biljett-ikon** – event som kräver biljett har en biljett-emoji i hörnet.
+  Markerar du biljetten som köpt (i detaljrutan) får emojin en **grön ton** och
+  eventet blir **automatiskt favorit** om det inte redan var det.
+- **Röd kant** – ett event som är favorit *och* kräver biljett *och* ännu inte är
+  markerat som köpt får en **röd kantmarkering till vänster**, så att du snabbt
+  ser vilka biljetter du fortfarande behöver köpa.
 - **★ Bara favoriter** – kryssrutan i verktygsfältet döljer allt utom dina
   favoriter och fungerar tillsammans med sök- och platsfiltren. *Återställ*
   nollställer även detta filter (men rör inte själva markeringarna).
@@ -170,18 +213,18 @@ besök – de följer **inte** med datafilerna och delas inte med andra.
 Ibland upptäcker du först *i schemat* att en programpunkt inte är intressant. Då
 kan du dölja den direkt, utan att redigera någon fil eller köra om skripten.
 
-- **✕ Dölj** – klicka på krysset i eventets övre högra hörn (eller knappen i
-  detaljrutan). Eventet försvinner från schemat. Precis som favoriter sparas det
-  i webbläsaren (`localStorage`) och påverkar bara din vy.
+- **✕ Dölj** – öppna eventets detaljruta och klicka **✕ Dölj event**. Eventet
+  försvinner från schemat. Precis som favoriter sparas det i webbläsaren
+  (`localStorage`) och påverkar bara din vy.
 - **Dölj alla förekomster** – om titeln återkommer flera gånger (t.ex.
   *Tornerspel* sex dagar i rad) frågar en liten ruta om du vill **Dölj alla N**
   eller **Bara den här**. *Dölj alla* fungerar då som en rad i
   `exclude_titles.txt`, fast direkt i webbläsaren. Är titeln unik döljs eventet
   direkt utan fråga.
 - **👁 Visa dolda (N)** – kryssrutan i verktygsfältet visar tillfälligt dina
-  dolda event igen, nedtonade och överstrukna, så att du kan ångra. Klicka på
-  ↩-symbolen på ett event för att ta fram det igen (är hela titeln dold frågar
-  rutan om du vill **Visa alla** igen).
+  dolda event igen, nedtonade och överstrukna, så att du kan ångra. Klicka på ett
+  sådant event och välj **↩ Visa eventet igen** i detaljrutan (är hela titeln dold
+  frågar rutan om du vill **Visa alla** igen).
 - **↩ Visa alla dolda** – knappen (som dyker upp när du har dolt något) tar fram
   alla dolda event på en gång, både enskilt dolda och titeldolda.
 
@@ -192,21 +235,22 @@ särskilt smidigt för den som bara öppnar en färdig HTML-fil och inte kör
 skripten själv. Att dölja ett event rör inte dina favoriter eller exporter; det
 är enbart en vy-inställning.
 
-## Så fungerar layouten
+## Så fungerar tidslinjen
 
-Schemat ritas som en tidslinje per dag: platser som kolumner och tiden nedåt.
+I **Zon-band** och **Alla platser** ritas tiden nedåt och platserna/zonerna som
+kolumner – och alla dagar ligger i **en enda sammanhållen tavla** som du
+scrollar lodrätt.
 
 - En programpunkt som sträcker sig över flera tidsrutor visas som **ett
   sammanhängande block** (höjden följer längden) istället för att upprepas.
-- Programpunkter som **krockar i tid på samma plats** delas upp i sidoställda
-  *lanes* så att de syns bredvid varandra. En ensam punkt fyller hela platsens
-  bredd.
-- Varje dag har en **begränsad höjd med egen scroll**, så den vågräta
-  scrollisten alltid är nåbar och plats- och tidsrubrikerna ligger kvar medan du
-  scrollar. Höjden styrs av `--board-max-h` högst upp i CSS:en.
-- Tidslinjen **krymper till det synliga tidsspannet** när du filtrerar (t.ex.
-  bara favoriter), så att tom tid före och efter dina träffar tas bort. Utan
-  filter visas hela dagen.
+- Programpunkter som **krockar i tid på samma plats/zon** delas upp i sidoställda
+  *lanes* så att de syns bredvid varandra. Korten har **konstant bredd** oavsett
+  antal lanes.
+- **Plats-/zonrubrikerna** ligger kvar högst upp och **vänsteraxeln** visar både
+  **dag och klockslag** medan du scrollar. Varje ny dag inleds med ett dagband.
+- **Filter döljer kolumner** som blir tomma (t.ex. *Bara favoriter*), så tavlan
+  smalnar av till ditt urval. Tavlans höjd styrs av `--board-max-h` i CSS:en, och
+  scrollar du förbi en dags slut fortsätter du rakt in i nästa dag.
 
 ## Var data kommer ifrån
 
