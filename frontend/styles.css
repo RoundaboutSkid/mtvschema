@@ -132,6 +132,7 @@ section.day.empty { display:none; }
 /* Röd vänsterkant: favoritmarkerat biljett-event som inte är köpt. Måste vinna
    över vy-specifika kantfärger (flöde --zone, zon/plats border-color). */
 body[data-view="flow"] .event.needs-ticket,
+body[data-view="guide"] .event.needs-ticket,
 body[data-view="zones"] .event.needs-ticket,
 body[data-view="places"] .event.needs-ticket { border-left-color:#e11d2a; border-left-width:5px; }
 .event.short .event-actions > * { width:15px; height:15px; font-size:.62rem; }
@@ -203,6 +204,44 @@ body[data-view="flow"] .event.short .ttl { font-size:.95rem; }
 body[data-view="flow"] .event.short .org { display:block; }
 body[data-view="flow"] .event.short .meta { display:flex; }
 body[data-view="flow"] .event.short .ev-place { display:inline-flex; }
+
+/* Programguide: en TV-guide-lik vy där tiden löper horisontellt och raderna
+   packas dynamiskt efter samtidiga event i stället för fasta platser. */
+.guide-scroll { display:none; overflow:auto; max-height:var(--board-max-h);
+  min-height:170px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+body[data-view="guide"] .guide-scroll.merged-guide { display:block; margin:16px 24px 34px; }
+.guide-board { position:relative; min-width:720px; background:#fff; }
+.guide-ruler { position:sticky; top:0; z-index:9; height:34px; background:var(--header-bg);
+  color:#fff; border-bottom:1px solid rgba(255,255,255,.22); }
+.guide-tick { position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,.24); }
+.guide-tick.hour { background:rgba(255,255,255,.55); color:#fff;
+  font-size:.72rem; font-weight:800; }
+.guide-tick.hour:not(:empty) { padding-left:5px; padding-top:9px; width:auto; min-width:44px;
+  background:linear-gradient(to right, rgba(255,255,255,.65) 0 1px, transparent 1px); }
+.guide-track { position:relative; background:
+  repeating-linear-gradient(to right, var(--line) 0, var(--line) 1px, transparent 1px, transparent var(--guide-half-hour,46.5px)),
+  repeating-linear-gradient(to bottom, #f6efe1 0, #f6efe1 1px, transparent 1px, transparent 78px); }
+.guide-track-inner { position:relative; min-height:84px; }
+.guide-day { border-top:2px solid var(--line2); }
+.guide-day.hidden { display:none; }
+.guide-day-head { position:relative; height:30px; display:flex; align-items:center;
+  background:#efe6d4; border-bottom:1px solid var(--line2); z-index:1; }
+.guide-day-title { position:sticky; left:0; z-index:2; display:inline-flex; align-items:center;
+  height:100%; padding:0 12px; background:#efe6d4; color:var(--ink);
+  font-weight:800; text-transform:capitalize; border-right:1px solid var(--line2); }
+body[data-view="guide"] .event { background:#fffaf0; border-color:var(--line2);
+  box-shadow:0 1px 3px rgba(0,0,0,.14); padding:5px 8px; }
+body[data-view="guide"] .event:hover { background:#fffdf8; box-shadow:0 5px 14px rgba(0,0,0,.20); }
+body[data-view="guide"] .event .t { display:block; padding-right:42px; font-size:.68rem; }
+body[data-view="guide"] .event .ttl { display:block; font-size:.78rem; line-height:1.15;
+  max-height:2.3em; overflow:hidden; }
+body[data-view="guide"] .event .org { display:none; }
+body[data-view="guide"] .event .meta { display:none; }
+body[data-view="guide"] .event .ev-place { display:block; margin-top:3px; color:var(--muted);
+  font-size:.66rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body[data-view="guide"] .event.short .ev-place { display:block; }
+body[data-view="guide"] .event.is-fav .act.fav { opacity:1; }
+body[data-view="guide"] section.day { display:none; }
 
 /* Tidslinje-vyer (Zon-band & Alla platser): egen kortbakgrund så korten inte
    smälter ihop med vita kolumner och timlinjer; sekundära knappar visas först

@@ -138,6 +138,7 @@ section.day.empty { display:none; }
 /* Röd vänsterkant: favoritmarkerat biljett-event som inte är köpt. Måste vinna
    över vy-specifika kantfärger (flöde --zone, zon/plats border-color). */
 body[data-view="flow"] .event.needs-ticket,
+body[data-view="guide"] .event.needs-ticket,
 body[data-view="zones"] .event.needs-ticket,
 body[data-view="places"] .event.needs-ticket { border-left-color:#e11d2a; border-left-width:5px; }
 .event.short .event-actions > * { width:15px; height:15px; font-size:.62rem; }
@@ -209,6 +210,44 @@ body[data-view="flow"] .event.short .ttl { font-size:.95rem; }
 body[data-view="flow"] .event.short .org { display:block; }
 body[data-view="flow"] .event.short .meta { display:flex; }
 body[data-view="flow"] .event.short .ev-place { display:inline-flex; }
+
+/* Programguide: en TV-guide-lik vy där tiden löper horisontellt och raderna
+   packas dynamiskt efter samtidiga event i stället för fasta platser. */
+.guide-scroll { display:none; overflow:auto; max-height:var(--board-max-h);
+  min-height:170px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+body[data-view="guide"] .guide-scroll.merged-guide { display:block; margin:16px 24px 34px; }
+.guide-board { position:relative; min-width:720px; background:#fff; }
+.guide-ruler { position:sticky; top:0; z-index:9; height:34px; background:var(--header-bg);
+  color:#fff; border-bottom:1px solid rgba(255,255,255,.22); }
+.guide-tick { position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,.24); }
+.guide-tick.hour { background:rgba(255,255,255,.55); color:#fff;
+  font-size:.72rem; font-weight:800; }
+.guide-tick.hour:not(:empty) { padding-left:5px; padding-top:9px; width:auto; min-width:44px;
+  background:linear-gradient(to right, rgba(255,255,255,.65) 0 1px, transparent 1px); }
+.guide-track { position:relative; background:
+  repeating-linear-gradient(to right, var(--line) 0, var(--line) 1px, transparent 1px, transparent var(--guide-half-hour,46.5px)),
+  repeating-linear-gradient(to bottom, #f6efe1 0, #f6efe1 1px, transparent 1px, transparent 78px); }
+.guide-track-inner { position:relative; min-height:84px; }
+.guide-day { border-top:2px solid var(--line2); }
+.guide-day.hidden { display:none; }
+.guide-day-head { position:relative; height:30px; display:flex; align-items:center;
+  background:#efe6d4; border-bottom:1px solid var(--line2); z-index:1; }
+.guide-day-title { position:sticky; left:0; z-index:2; display:inline-flex; align-items:center;
+  height:100%; padding:0 12px; background:#efe6d4; color:var(--ink);
+  font-weight:800; text-transform:capitalize; border-right:1px solid var(--line2); }
+body[data-view="guide"] .event { background:#fffaf0; border-color:var(--line2);
+  box-shadow:0 1px 3px rgba(0,0,0,.14); padding:5px 8px; }
+body[data-view="guide"] .event:hover { background:#fffdf8; box-shadow:0 5px 14px rgba(0,0,0,.20); }
+body[data-view="guide"] .event .t { display:block; padding-right:42px; font-size:.68rem; }
+body[data-view="guide"] .event .ttl { display:block; font-size:.78rem; line-height:1.15;
+  max-height:2.3em; overflow:hidden; }
+body[data-view="guide"] .event .org { display:none; }
+body[data-view="guide"] .event .meta { display:none; }
+body[data-view="guide"] .event .ev-place { display:block; margin-top:3px; color:var(--muted);
+  font-size:.66rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body[data-view="guide"] .event.short .ev-place { display:block; }
+body[data-view="guide"] .event.is-fav .act.fav { opacity:1; }
+body[data-view="guide"] section.day { display:none; }
 
 /* Tidslinje-vyer (Zon-band & Alla platser): egen kortbakgrund så korten inte
    smälter ihop med vita kolumner och timlinjer; sekundära knappar visas först
@@ -444,6 +483,15 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
       // är dolda), så hoppa genom att skrolla tavlan till dagens y-position.
       a.addEventListener('click', e => {
         if (document.body.dataset.view === 'flow') return;
+        if (document.body.dataset.view === 'guide') {
+          const sc = document.querySelector('.guide-scroll.merged-guide');
+          const day = document.querySelector('.guide-day[data-date="' + d.date + '"]');
+          if (sc && day) {
+            e.preventDefault();
+            sc.scrollTop = Math.max(0, day.offsetTop - 34);
+          }
+          return;
+        }
         const geo = window.MV_GEO;
         const sc = document.querySelector('.board-scroll.merged');
         if (geo && sc && geo.headTop[d.date] != null) {
@@ -601,6 +649,68 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
     return list;
   }
 
+  // ---- Programguide (TV-guide-metafor): tid åt sidan, samtidiga val i rader --
+  // Själva radpackningen görs i VIEW när eventnoderna flyttas hit, så samma
+  // DOM-noder fortsätter bära favorit-, biljett-, modal- och filterlogik.
+  const GUIDE_PX = 2.6;       // horisontell skala: 1 minut -> px
+
+  function guideTimeLabel(minutes) {
+    minutes %= 24 * 60;
+    return String(Math.floor(minutes / 60)).padStart(2, '0') + ':' +
+      String(minutes % 60).padStart(2, '0');
+  }
+
+  function buildMergedGuideBoard() {
+    const days = DATA.days || [];
+    if (!days.length) return el('div', 'guide-scroll merged-guide');
+    const dayStart = Math.min.apply(null, days.map(d => d.dayStart));
+    const dayEnd = Math.max.apply(null, days.map(d => d.dayEnd));
+    const trackW = Math.max(960, Math.round((dayEnd - dayStart) * GUIDE_PX));
+    const scroll = el('div', 'guide-scroll merged-guide');
+    const board = el('div', 'guide-board guide-merged-board');
+    board.style.width = trackW + 'px';
+    board.style.setProperty('--guide-half-hour', (30 * GUIDE_PX) + 'px');
+
+    const ruler = el('div', 'guide-ruler');
+    ruler.style.width = trackW + 'px';
+    for (let minute = dayStart; minute <= dayEnd; minute += 30) {
+      const x = Math.round((minute - dayStart) * GUIDE_PX);
+      const mark = el('div', 'guide-tick' + (minute % 60 === 0 ? ' hour' : ''));
+      mark.style.left = x + 'px';
+      if (minute % 60 === 0) {
+        mark.textContent = guideTimeLabel(minute);
+      }
+      ruler.appendChild(mark);
+    }
+    board.appendChild(ruler);
+
+    const body = el('div', 'guide-days');
+    days.forEach(d => {
+      const day = el('div', 'guide-day');
+      day.dataset.date = d.date;
+      const head = el('div', 'guide-day-head');
+      const title = el('span', 'guide-day-title');
+      title.textContent = d.title;
+      head.appendChild(title);
+      day.appendChild(head);
+
+      const track = el('div', 'guide-track');
+      track.style.width = trackW + 'px';
+      const inner = el('div', 'guide-track-inner');
+      inner.dataset.date = d.date;
+      inner.dataset.dayStart = dayStart;
+      inner.dataset.dayEnd = dayEnd;
+      inner.dataset.px = GUIDE_PX;
+      inner.style.width = trackW + 'px';
+      track.appendChild(inner);
+      day.appendChild(track);
+      body.appendChild(day);
+    });
+    board.appendChild(body);
+    scroll.appendChild(board);
+    return scroll;
+  }
+
   // ---- En sammanslagen tavla för hela veckan ------------------------------
   // Alla dagar staplas vertikalt i EN skrollbar tavla med gemensamma (globala)
   // plats-/zon-kolumner och en klistrad kolumnrubrik. Vänsteraxeln visar tid
@@ -714,6 +824,7 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
       sec.appendChild(buildFlowList(d));
       main.appendChild(sec);
     });
+    main.appendChild(buildMergedGuideBoard());
     main.appendChild(buildMergedBoard());
   }
 
@@ -724,7 +835,7 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
 
 
 /* --------------------------------------------------------------------------
- * VIEW – vy-växlare (Flöde / Zon-band / Alla platser)
+ * VIEW – vy-växlare (Flöde / Programguide / Zon-band / Alla platser)
  *
  * Läget sparas i localStorage och speglas i body[data-view]. Varje vy har sin
  * egen uppsättning kolumner i tavlan; moveTo() flyttar (inte återskapar) event-
@@ -734,6 +845,7 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
   const VIEW_KEY = 'mv_view_v1';
   const VIEWS = [
     { id: 'flow',   icon: '\uD83D\uDCC5', label: 'Flöde' },
+    { id: 'guide',  icon: '\uD83D\uDDBC\uFE0F', label: 'Programguide' },
     { id: 'zones',  icon: '\uD83E\uDDED', label: 'Zon-band' },
     { id: 'places', icon: '\uD83D\uDDC2\uFE0F', label: 'Alla platser' },
   ];
@@ -756,8 +868,11 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
   // Flytta (inte återskapa) event-noderna mellan plats-, zon- och alla-platser-
   // kolumner så att all befintlig wiring (favoriter, modal, filter) följer med.
   let placed = 'flow';
+  const GUIDE_ROW_H = 78;
+  const GUIDE_MIN_W = 150;
+
   function placeEvent(node, target) {
-    if (target === 'flow') return;   // listrader är statiska – CSS sköter layouten
+    if (target === 'flow' || target === 'guide') return;   // listrader/guide sköts separat
     const zone = target === 'zones';
     const lane = +(zone ? node.dataset.zlane : node.dataset.vlane) || 0;
     const span = +(zone ? node.dataset.zspan : node.dataset.vspan) || 1;
@@ -779,6 +894,52 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
     return document.querySelector('.board.merged .venue-col[data-venue="' +
       node.dataset.venue + '"] .track-inner-m');
   }
+
+  function guideTrack(date) {
+    return document.querySelector('.merged-guide .guide-track-inner[data-date="' + date + '"]');
+  }
+
+  function placeGuideDay(date, nodes) {
+    const track = guideTrack(date);
+    if (!track) return;
+    const dayStart = +track.dataset.dayStart || 0;
+    const px = +track.dataset.px || 1.55;
+    const visible = nodes.filter(n => !n.classList.contains('hidden'));
+    visible.sort((a, b) =>
+      (+a.dataset.s - +b.dataset.s) || (+a.dataset.e - +b.dataset.e) ||
+      (a.dataset.title < b.dataset.title ? -1 : 1));
+
+    const laneEnds = [];
+    visible.forEach(node => {
+      const s = +node.dataset.s || 0;
+      const e = +node.dataset.e || s + 30;
+      const visualEnd = Math.max(e, s + Math.ceil(GUIDE_MIN_W / px));
+      let lane = laneEnds.findIndex(end => end <= s);
+      if (lane === -1) {
+        lane = laneEnds.length;
+        laneEnds.push(visualEnd);
+      } else {
+        laneEnds[lane] = visualEnd;
+      }
+      node.style.left = Math.round((s - dayStart) * px) + 'px';
+      node.style.top = (lane * GUIDE_ROW_H + 6) + 'px';
+      node.style.width = Math.max(GUIDE_MIN_W, Math.round((e - s) * px) - 4) + 'px';
+      node.style.height = (GUIDE_ROW_H - 12) + 'px';
+    });
+
+    const rows = Math.max(laneEnds.length, visible.length ? 1 : 0);
+    track.style.height = Math.max(84, rows * GUIDE_ROW_H + 8) + 'px';
+  }
+
+  function reflowGuide() {
+    if (mode !== 'guide') return;
+    const byDay = {};
+    document.querySelectorAll('.guide-track-inner .event').forEach(n => {
+      (byDay[n.dataset.date] = byDay[n.dataset.date] || []).push(n);
+    });
+    Object.keys(byDay).forEach(date => placeGuideDay(date, byDay[date]));
+  }
+
   function moveTo(target) {
     if (placed === target) return;
     const nodes = Array.prototype.slice.call(document.querySelectorAll('.event'));
@@ -794,6 +955,18 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
           (+a.dataset.s - +b.dataset.s) || (+a.dataset.e - +b.dataset.e) ||
           (a.dataset.title < b.dataset.title ? -1 : 1));
         byDay[date].forEach(n => { list.appendChild(n); placeEvent(n, target); });
+      });
+    } else if (target === 'guide') {
+      const byDay = {};
+      nodes.forEach(n => { (byDay[n.dataset.date] = byDay[n.dataset.date] || []).push(n); });
+      Object.keys(byDay).forEach(date => {
+        const track = guideTrack(date);
+        if (!track) return;
+        byDay[date].sort((a, b) =>
+          (+a.dataset.s - +b.dataset.s) || (+a.dataset.e - +b.dataset.e) ||
+          (a.dataset.title < b.dataset.title ? -1 : 1));
+        byDay[date].forEach(n => track.appendChild(n));
+        placeGuideDay(date, byDay[date]);
       });
     } else {
       nodes.forEach(node => {
@@ -829,6 +1002,7 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
 
   render();
   applyMode();
+  window.MVVIEW = { reflowGuide: reflowGuide };
 })();
 
 
@@ -1074,11 +1248,15 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
     const seenDate = {};
     for (const el of events) if (!el.classList.contains('hidden')) seenDate[el.dataset.date] = true;
     document.querySelectorAll('section.day').forEach(day => {
-      const any = !!seenDate[day.id.replace(/^day-/, '')];
+      const date = day.id.replace(/^day-/, '');
+      const any = !!seenDate[date];
       day.classList.toggle('empty', !any);
       const link = document.querySelector('nav.days a[href="#' + day.id + '"]');
       if (link) link.classList.toggle('empty', !any);
+      const gday = document.querySelector('.guide-day[data-date="' + date + '"]');
+      if (gday) gday.classList.toggle('hidden', !any);
     });
+    if (window.MVVIEW) window.MVVIEW.reflowGuide();
     countEl.textContent = 'Visar ' + visible + ' av ' + total + ' programpunkter';
   }
 

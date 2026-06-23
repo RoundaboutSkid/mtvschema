@@ -101,13 +101,17 @@ titel matchas exakt). Kör sedan `python build_schedule.py` igen – datafilen r
 inte. Du kan också ge titlar direkt på kommandoraden med `--exclude`.
 
 
-## Tre vyer
+## Fyra vyer
 
-Högst upp i schemat finns en **vy-växlare** med tre sätt att läsa programmet.
+Högst upp i schemat finns en **vy-växlare** med fyra sätt att läsa programmet.
 Valet sparas i webbläsaren så att schemat öppnas i samma vy nästa gång.
 
 - **📅 Flöde** – en lugn, kronologisk lista per dag (en rad per programpunkt med
   tid, plats, titel och arrangör). Bäst för att bara bläddra och läsa.
+- **🖼️ Programguide** – en TV-guide-lik veckotavla där tiden löper vågrätt och
+  dagarna ligger staplade i samma skroll. Samtidiga programpunkter packas i
+  dynamiska rader, så du kan läsa kronologiskt och se krockar/varaktighet utan
+  fasta, tomma platskolumner.
 - **🧭 Zon-band** – en tidslinje där programpunkterna grupperas i **zoner**
   (områden i Visby) i stället för enskilda platser. Varje kort visar sin plats
   med ikon.
@@ -351,4 +355,3 @@ en build med `--no-ics-endpoint`.
   med precis som i `.ics`-nedladdningen.
 
 Se [`worker/README.md`](worker/README.md) för fler detaljer och lokalt test.
-

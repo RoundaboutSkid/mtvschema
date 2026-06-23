@@ -40,6 +40,15 @@
       // är dolda), så hoppa genom att skrolla tavlan till dagens y-position.
       a.addEventListener('click', e => {
         if (document.body.dataset.view === 'flow') return;
+        if (document.body.dataset.view === 'guide') {
+          const sc = document.querySelector('.guide-scroll.merged-guide');
+          const day = document.querySelector('.guide-day[data-date="' + d.date + '"]');
+          if (sc && day) {
+            e.preventDefault();
+            sc.scrollTop = Math.max(0, day.offsetTop - 34);
+          }
+          return;
+        }
         const geo = window.MV_GEO;
         const sc = document.querySelector('.board-scroll.merged');
         if (geo && sc && geo.headTop[d.date] != null) {
@@ -197,6 +206,68 @@
     return list;
   }
 
+  // ---- Programguide (TV-guide-metafor): tid åt sidan, samtidiga val i rader --
+  // Själva radpackningen görs i VIEW när eventnoderna flyttas hit, så samma
+  // DOM-noder fortsätter bära favorit-, biljett-, modal- och filterlogik.
+  const GUIDE_PX = 2.6;       // horisontell skala: 1 minut -> px
+
+  function guideTimeLabel(minutes) {
+    minutes %= 24 * 60;
+    return String(Math.floor(minutes / 60)).padStart(2, '0') + ':' +
+      String(minutes % 60).padStart(2, '0');
+  }
+
+  function buildMergedGuideBoard() {
+    const days = DATA.days || [];
+    if (!days.length) return el('div', 'guide-scroll merged-guide');
+    const dayStart = Math.min.apply(null, days.map(d => d.dayStart));
+    const dayEnd = Math.max.apply(null, days.map(d => d.dayEnd));
+    const trackW = Math.max(960, Math.round((dayEnd - dayStart) * GUIDE_PX));
+    const scroll = el('div', 'guide-scroll merged-guide');
+    const board = el('div', 'guide-board guide-merged-board');
+    board.style.width = trackW + 'px';
+    board.style.setProperty('--guide-half-hour', (30 * GUIDE_PX) + 'px');
+
+    const ruler = el('div', 'guide-ruler');
+    ruler.style.width = trackW + 'px';
+    for (let minute = dayStart; minute <= dayEnd; minute += 30) {
+      const x = Math.round((minute - dayStart) * GUIDE_PX);
+      const mark = el('div', 'guide-tick' + (minute % 60 === 0 ? ' hour' : ''));
+      mark.style.left = x + 'px';
+      if (minute % 60 === 0) {
+        mark.textContent = guideTimeLabel(minute);
+      }
+      ruler.appendChild(mark);
+    }
+    board.appendChild(ruler);
+
+    const body = el('div', 'guide-days');
+    days.forEach(d => {
+      const day = el('div', 'guide-day');
+      day.dataset.date = d.date;
+      const head = el('div', 'guide-day-head');
+      const title = el('span', 'guide-day-title');
+      title.textContent = d.title;
+      head.appendChild(title);
+      day.appendChild(head);
+
+      const track = el('div', 'guide-track');
+      track.style.width = trackW + 'px';
+      const inner = el('div', 'guide-track-inner');
+      inner.dataset.date = d.date;
+      inner.dataset.dayStart = dayStart;
+      inner.dataset.dayEnd = dayEnd;
+      inner.dataset.px = GUIDE_PX;
+      inner.style.width = trackW + 'px';
+      track.appendChild(inner);
+      day.appendChild(track);
+      body.appendChild(day);
+    });
+    board.appendChild(body);
+    scroll.appendChild(board);
+    return scroll;
+  }
+
   // ---- En sammanslagen tavla för hela veckan ------------------------------
   // Alla dagar staplas vertikalt i EN skrollbar tavla med gemensamma (globala)
   // plats-/zon-kolumner och en klistrad kolumnrubrik. Vänsteraxeln visar tid
@@ -310,6 +381,7 @@
       sec.appendChild(buildFlowList(d));
       main.appendChild(sec);
     });
+    main.appendChild(buildMergedGuideBoard());
     main.appendChild(buildMergedBoard());
   }
 
@@ -320,7 +392,7 @@
 
 
 /* --------------------------------------------------------------------------
- * VIEW – vy-växlare (Flöde / Zon-band / Alla platser)
+ * VIEW – vy-växlare (Flöde / Programguide / Zon-band / Alla platser)
  *
  * Läget sparas i localStorage och speglas i body[data-view]. Varje vy har sin
  * egen uppsättning kolumner i tavlan; moveTo() flyttar (inte återskapar) event-
@@ -330,6 +402,7 @@
   const VIEW_KEY = 'mv_view_v1';
   const VIEWS = [
     { id: 'flow',   icon: '\uD83D\uDCC5', label: 'Flöde' },
+    { id: 'guide',  icon: '\uD83D\uDDBC\uFE0F', label: 'Programguide' },
     { id: 'zones',  icon: '\uD83E\uDDED', label: 'Zon-band' },
     { id: 'places', icon: '\uD83D\uDDC2\uFE0F', label: 'Alla platser' },
   ];
@@ -352,8 +425,11 @@
   // Flytta (inte återskapa) event-noderna mellan plats-, zon- och alla-platser-
   // kolumner så att all befintlig wiring (favoriter, modal, filter) följer med.
   let placed = 'flow';
+  const GUIDE_ROW_H = 78;
+  const GUIDE_MIN_W = 150;
+
   function placeEvent(node, target) {
-    if (target === 'flow') return;   // listrader är statiska – CSS sköter layouten
+    if (target === 'flow' || target === 'guide') return;   // listrader/guide sköts separat
     const zone = target === 'zones';
     const lane = +(zone ? node.dataset.zlane : node.dataset.vlane) || 0;
     const span = +(zone ? node.dataset.zspan : node.dataset.vspan) || 1;
@@ -375,6 +451,52 @@
     return document.querySelector('.board.merged .venue-col[data-venue="' +
       node.dataset.venue + '"] .track-inner-m');
   }
+
+  function guideTrack(date) {
+    return document.querySelector('.merged-guide .guide-track-inner[data-date="' + date + '"]');
+  }
+
+  function placeGuideDay(date, nodes) {
+    const track = guideTrack(date);
+    if (!track) return;
+    const dayStart = +track.dataset.dayStart || 0;
+    const px = +track.dataset.px || 1.55;
+    const visible = nodes.filter(n => !n.classList.contains('hidden'));
+    visible.sort((a, b) =>
+      (+a.dataset.s - +b.dataset.s) || (+a.dataset.e - +b.dataset.e) ||
+      (a.dataset.title < b.dataset.title ? -1 : 1));
+
+    const laneEnds = [];
+    visible.forEach(node => {
+      const s = +node.dataset.s || 0;
+      const e = +node.dataset.e || s + 30;
+      const visualEnd = Math.max(e, s + Math.ceil(GUIDE_MIN_W / px));
+      let lane = laneEnds.findIndex(end => end <= s);
+      if (lane === -1) {
+        lane = laneEnds.length;
+        laneEnds.push(visualEnd);
+      } else {
+        laneEnds[lane] = visualEnd;
+      }
+      node.style.left = Math.round((s - dayStart) * px) + 'px';
+      node.style.top = (lane * GUIDE_ROW_H + 6) + 'px';
+      node.style.width = Math.max(GUIDE_MIN_W, Math.round((e - s) * px) - 4) + 'px';
+      node.style.height = (GUIDE_ROW_H - 12) + 'px';
+    });
+
+    const rows = Math.max(laneEnds.length, visible.length ? 1 : 0);
+    track.style.height = Math.max(84, rows * GUIDE_ROW_H + 8) + 'px';
+  }
+
+  function reflowGuide() {
+    if (mode !== 'guide') return;
+    const byDay = {};
+    document.querySelectorAll('.guide-track-inner .event').forEach(n => {
+      (byDay[n.dataset.date] = byDay[n.dataset.date] || []).push(n);
+    });
+    Object.keys(byDay).forEach(date => placeGuideDay(date, byDay[date]));
+  }
+
   function moveTo(target) {
     if (placed === target) return;
     const nodes = Array.prototype.slice.call(document.querySelectorAll('.event'));
@@ -390,6 +512,18 @@
           (+a.dataset.s - +b.dataset.s) || (+a.dataset.e - +b.dataset.e) ||
           (a.dataset.title < b.dataset.title ? -1 : 1));
         byDay[date].forEach(n => { list.appendChild(n); placeEvent(n, target); });
+      });
+    } else if (target === 'guide') {
+      const byDay = {};
+      nodes.forEach(n => { (byDay[n.dataset.date] = byDay[n.dataset.date] || []).push(n); });
+      Object.keys(byDay).forEach(date => {
+        const track = guideTrack(date);
+        if (!track) return;
+        byDay[date].sort((a, b) =>
+          (+a.dataset.s - +b.dataset.s) || (+a.dataset.e - +b.dataset.e) ||
+          (a.dataset.title < b.dataset.title ? -1 : 1));
+        byDay[date].forEach(n => track.appendChild(n));
+        placeGuideDay(date, byDay[date]);
       });
     } else {
       nodes.forEach(node => {
@@ -425,6 +559,7 @@
 
   render();
   applyMode();
+  window.MVVIEW = { reflowGuide: reflowGuide };
 })();
 
 
@@ -670,11 +805,15 @@
     const seenDate = {};
     for (const el of events) if (!el.classList.contains('hidden')) seenDate[el.dataset.date] = true;
     document.querySelectorAll('section.day').forEach(day => {
-      const any = !!seenDate[day.id.replace(/^day-/, '')];
+      const date = day.id.replace(/^day-/, '');
+      const any = !!seenDate[date];
       day.classList.toggle('empty', !any);
       const link = document.querySelector('nav.days a[href="#' + day.id + '"]');
       if (link) link.classList.toggle('empty', !any);
+      const gday = document.querySelector('.guide-day[data-date="' + date + '"]');
+      if (gday) gday.classList.toggle('hidden', !any);
     });
+    if (window.MVVIEW) window.MVVIEW.reflowGuide();
     countEl.textContent = 'Visar ' + visible + ' av ' + total + ' programpunkter';
   }
 
