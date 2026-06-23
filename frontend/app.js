@@ -128,7 +128,6 @@
     n.style.height = ev.height + 'px';
     n.dataset.ptop = ev.top;
     n.style.setProperty('--cat', '#' + ev.color);
-    n.title = ev.tooltip || '';
     n.setAttribute('data-id', ev.id);
     n.setAttribute('data-s', ev.s);
     n.setAttribute('data-e', ev.e);
@@ -882,11 +881,12 @@
   const mMeta = document.getElementById('m-meta');
   const mBadges = document.getElementById('m-badges');
   const mDesc = document.getElementById('m-desc');
+  const mOccurrences = document.getElementById('m-occurrences');
   const mTicket = document.getElementById('m-ticket');
   const mFav = document.getElementById('m-fav');
   const mBought = document.getElementById('m-bought');
   const mHide = document.getElementById('m-hide');
-  let currentId = null, currentTicketed = false;
+  let currentId = null, currentTicketed = false, currentTitle = '';
 
   function addBadge(text, color, href) {
     const b = document.createElement(href ? 'a' : 'span');
@@ -909,11 +909,92 @@
     const hid = currentId ? window.MV.isHidden(currentId) : false;
     mHide.textContent = hid ? '\u21a9 Visa eventet igen' : '\u2715 D\u00f6lj event';
     mHide.classList.toggle('on', hid);
+    syncOccurrences();
+  }
+
+  function dayTitle(date) {
+    const sec = document.getElementById('day-' + date);
+    const h = sec ? sec.querySelector('h2') : null;
+    return h ? h.textContent.trim() : date;
+  }
+
+  function matchingOccurrences(title, excludeId) {
+    return Array.from(document.querySelectorAll('.event'))
+      .filter(ev => ev.dataset.title === title && ev.dataset.id !== excludeId)
+      .sort((a, b) =>
+        (a.dataset.date || '').localeCompare(b.dataset.date || '') ||
+        (+a.dataset.s - +b.dataset.s) ||
+        (a.dataset.venue || '').localeCompare(b.dataset.venue || '', 'sv'));
+  }
+
+  function syncOccurrences() {
+    if (!mOccurrences || !window.MV) return;
+    mOccurrences.querySelectorAll('.occ-fav').forEach(btn => {
+      const id = btn.dataset.id || '';
+      const fav = !!id && window.MV.isFav(id);
+      btn.classList.toggle('on', fav);
+      btn.setAttribute('aria-pressed', fav ? 'true' : 'false');
+      btn.textContent = fav ? '\u2605' : '\u2606';
+      btn.title = fav ? 'Ta bort favorit' : 'Markera som favorit';
+    });
+  }
+
+  function renderOccurrences() {
+    if (!mOccurrences) return;
+    mOccurrences.textContent = '';
+    const rows = currentTitle ? matchingOccurrences(currentTitle, currentId) : [];
+    if (!rows.length) {
+      mOccurrences.hidden = true;
+      return;
+    }
+    mOccurrences.hidden = false;
+    const h = document.createElement('h4');
+    h.textContent = 'Andra tillfällen';
+    mOccurrences.appendChild(h);
+    const list = document.createElement('div');
+    list.className = 'occ-list';
+    rows.forEach(ev => {
+      const row = document.createElement('div');
+      row.className = 'occ-row';
+
+      const when = document.createElement('div');
+      when.className = 'occ-when';
+      const d = document.createElement('span');
+      d.className = 'occ-date';
+      d.textContent = dayTitle(ev.dataset.date || '');
+      const t = document.createElement('span');
+      t.className = 'occ-time';
+      t.textContent = ev.dataset.time || '';
+      when.appendChild(d);
+      when.appendChild(t);
+
+      const where = document.createElement('div');
+      where.className = 'occ-where';
+      where.textContent = ev.dataset.venue || '';
+
+      const fav = document.createElement('button');
+      fav.type = 'button';
+      fav.className = 'occ-fav';
+      fav.dataset.id = ev.dataset.id || '';
+      fav.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.MV && fav.dataset.id) window.MV.toggleFav(fav.dataset.id);
+      });
+
+      row.appendChild(when);
+      row.appendChild(where);
+      row.appendChild(fav);
+      list.appendChild(row);
+    });
+    mOccurrences.appendChild(list);
+    syncOccurrences();
   }
 
   function openFor(el) {
     currentId = el.dataset.id || null;
     currentTicketed = !!el.dataset.ticket;
+    currentTitle = el.dataset.title || '';
     mTitle.textContent = el.dataset.title || '';
     const meta = [];
     if (el.dataset.time) meta.push(el.dataset.time);
@@ -948,6 +1029,7 @@
     if (el.dataset.ticket) { mTicket.href = el.dataset.ticket; mTicket.hidden = false; }
     else { mTicket.removeAttribute('href'); mTicket.hidden = true; }
 
+    renderOccurrences();
     refreshActions();
     modal.hidden = false;
   }

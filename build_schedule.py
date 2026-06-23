@@ -78,8 +78,8 @@ def _pos(minute_offset: int) -> float:
 def _event_record(p: Placement, day: DayLayout, lane_count: int) -> dict:
     """Build the JSON record app.js needs to recreate one ``.event`` block.
 
-    All layout maths (position, lane width, tooltip, search text) happens here so
-    the browser only maps values onto the DOM. Keys mirror the old ``data-*``
+    All layout maths (position, lane width, search text) happens here so the
+    browser only maps values onto the DOM. Keys mirror the old ``data-*``
     attributes.
     """
     e = p.event
@@ -91,17 +91,6 @@ def _event_record(p: Placement, day: DayLayout, lane_count: int) -> dict:
     time_txt = f"{e.start}\u2013{e.end}"
     search = " ".join([e.title, e.organizer, e.venue, e.category, e.status, e.description]).lower()
 
-    tooltip = f"{time_txt} \u00b7 {e.title}"
-    if e.organizer:
-        tooltip += f" \u00b7 {e.organizer}"
-    tooltip += f" \u00b7 {e.venue}"
-    if e.description:
-        snippet = " ".join(e.description.split())
-        if len(snippet) > 220:
-            snippet = snippet[:220].rstrip() + "\u2026"
-        tooltip += f"\n\n{snippet}"
-    tooltip += "\n\n(Klicka för detaljer)"
-
     rec: dict[str, object] = {
         "id": event_dom_id(e), "s": e.start_min, "e": e.end_min,
         "top": top, "height": height, "left": left, "width": width,
@@ -109,7 +98,7 @@ def _event_record(p: Placement, day: DayLayout, lane_count: int) -> dict:
         "color": color, "short": height < 34,
         "title": e.title, "time": time_txt, "venue": e.venue,
         "cat": e.category or "", "catKey": e.category if e.category else NO_CATEGORY,
-        "search": search, "tooltip": tooltip,
+        "search": search,
     }
     if e.organizer:
         rec["org"] = e.organizer
