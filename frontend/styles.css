@@ -78,13 +78,26 @@ section.day.empty { display:none; }
   display:flex; align-items:center; justify-content:center; padding:4px 8px; overflow:hidden;
   border-left:1px solid rgba(255,255,255,.16); }
 .track { position:relative; flex:1 0 auto; overflow:hidden; }
-.axis-inner { position:relative; transform:translateY(calc(var(--board-pad) - var(--off, 0px)));
-  background-image:repeating-linear-gradient(to bottom,
-    var(--line) 0, var(--line) 1px, transparent 1px, transparent var(--slot-px)); }
-.track-inner { position:absolute; top:0; left:0; right:0;
-  transform:translateY(calc(var(--board-pad) - var(--off, 0px)));
-  background-image:repeating-linear-gradient(to bottom,
-    var(--line) 0, var(--line) 1px, transparent 1px, transparent var(--slot-px)); }
+
+/* Sammanslagen tavla: alla dagar i EN skroll. Kolumnerna lyfts över bakgrunds-
+   lagret (grid-layer) som ritar dagband + timrutnät i hela tavlans bredd. */
+.board.merged { position:relative; }
+.board.merged .venue-col,
+.board.merged .zone-col { position:relative; z-index:1; }
+.grid-layer { position:absolute; top:var(--head-h); left:0; width:100%; z-index:0;
+  pointer-events:none; }
+.day-strip { position:absolute; left:0; width:100%; background:#efe6d4;
+  border-top:2px solid var(--line2); border-bottom:1px solid var(--line2); }
+.day-grid { position:absolute; left:0; width:100%; background-repeat:repeat-y;
+  background-image:linear-gradient(to bottom, var(--line) 0, var(--line) 1px, transparent 1px); }
+.axis-inner-m { position:relative; }
+.track-inner-m { position:absolute; top:0; left:0; right:0; }
+.day-label { position:absolute; left:0; right:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; line-height:1.05; padding:0 2px;
+  background:#efe6d4; border-top:2px solid var(--line2); border-bottom:1px solid var(--line2);
+  overflow:hidden; z-index:1; }
+.day-label .dl-wd { font-size:.7rem; font-weight:800; color:var(--ink); text-transform:capitalize; }
+.day-label .dl-dt { font-size:.62rem; font-weight:700; color:var(--muted); }
 
 .event { position:absolute; overflow:hidden; border-radius:7px; color:var(--ink);
   background:#fff; border:1px solid var(--line); border-left:4px solid var(--cat,#bbb);
@@ -147,10 +160,16 @@ body[data-view="flow"] .zone-col,
 body[data-view="zones"] .venue-col,
 body[data-view="places"] .zone-col { display:none; }
 
+/* En sammanslagen tavla för tidslinje-vyerna; i Flöde visas dagssektionerna. */
+.board-scroll.merged { display:none; margin:16px 24px 34px; }
+body[data-view="zones"] .board-scroll.merged,
+body[data-view="places"] .board-scroll.merged { display:block; }
+body[data-view="zones"] section.day,
+body[data-view="places"] section.day { display:none; }
+
 /* Flödesvy: kronologisk lista (mkal-stil) – separata lugna kort. Tid + platstagg
    till vänster, titel/arrangör/kategori till höger. Inga tidslinjer eller höjder. */
 .flow-list { display:none; }
-body[data-view="flow"] .board-scroll { display:none; }
 body[data-view="flow"] .flow-list { display:flex; flex-direction:column; gap:10px;
   max-width:880px; }
 body[data-view="flow"] .event {

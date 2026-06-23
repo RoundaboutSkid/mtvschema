@@ -36,6 +36,17 @@
       const a = document.createElement('a');
       a.href = '#day-' + d.date;
       a.textContent = d.label;
+      // I tidslinje-vyerna ligger dagarna i den sammanslagna tavlan (sektionerna
+      // är dolda), så hoppa genom att skrolla tavlan till dagens y-position.
+      a.addEventListener('click', e => {
+        if (document.body.dataset.view === 'flow') return;
+        const geo = window.MV_GEO;
+        const sc = document.querySelector('.board-scroll.merged');
+        if (geo && sc && geo.headTop[d.date] != null) {
+          e.preventDefault();
+          sc.scrollTop = geo.headTop[d.date];
+        }
+      });
       nav.appendChild(a);
     });
   }
@@ -102,8 +113,11 @@
   // ---- Ett event-block ----------------------------------------------------
   function buildEvent(ev) {
     const n = el('div', 'event' + (ev.short ? ' short' : ''));
-    n.style.cssText = 'top:' + ev.top + 'px;height:' + ev.height + 'px;left:' + ev.left +
-      '%;width:calc(' + ev.width + '% - 3px);';
+    // Höjd = varaktighet. Topp/vänster/bredd sätts av VIEW.placeEvent i tidslinje-
+    // vyerna (absolut position i den sammanslagna tavlan); i flödet är kortet
+    // statiskt (CSS) så dessa ignoreras.
+    n.style.height = ev.height + 'px';
+    n.dataset.ptop = ev.top;
     n.style.setProperty('--cat', '#' + ev.color);
     n.title = ev.tooltip || '';
     n.setAttribute('data-id', ev.id);
@@ -119,11 +133,12 @@
     if (ev.status) n.setAttribute('data-status', ev.status);
     if (ev.ticket) n.setAttribute('data-ticket', ev.ticket);
     if (ev.desc) n.setAttribute('data-desc', ev.desc);
-    // Två uppsättningar lane-positioner: plats (v) och zon (z). VIEW växlar mellan dem.
-    n.setAttribute('data-vleft', ev.left);
-    n.setAttribute('data-vwidth', ev.width);
-    if (ev.zLeft != null) n.setAttribute('data-zleft', ev.zLeft);
-    if (ev.zWidth != null) n.setAttribute('data-zwidth', ev.zWidth);
+    // Lane-index/spann för plats (v) och zon (z). VIEW positionerar i pixlar mot
+    // den globala kolumnbredden (laneCount × LANE_W) så korten blir dygnsoberoende.
+    n.dataset.vlane = ev.vlane != null ? ev.vlane : 0;
+    n.dataset.vspan = ev.vspan != null ? ev.vspan : 1;
+    n.dataset.zlane = ev.zlane != null ? ev.zlane : 0;
+    n.dataset.zspan = ev.zspan != null ? ev.zspan : 1;
     n.setAttribute('data-zone', ev.zone || 'Z?');
     n.style.setProperty('--zone', '#' + (ev.zColor || '6B7280'));
 
@@ -178,36 +193,76 @@
     const items = [];
     (d.venues || []).forEach(v => (v.events || []).forEach(ev => items.push(ev)));
     items.sort((a, b) => (a.s - b.s) || (a.e - b.e) || (a.title < b.title ? -1 : 1));
-    items.forEach(ev => list.appendChild(buildEvent(ev)));
+    items.forEach(ev => { const node = buildEvent(ev); node.dataset.date = d.date; list.appendChild(node); });
     return list;
   }
 
-  // ---- En dags tavla ------------------------------------------------------
-  function buildBoard(d) {
-    const scroll = el('div', 'board-scroll');
-    const board = el('div', 'board');
-    board.setAttribute('data-day-start', d.dayStart);
-    board.setAttribute('data-day-end', d.dayEnd);
-    board.setAttribute('data-slot', d.slot);
-    board.setAttribute('data-px', d.px);
-    board.style.setProperty('--slot-px', d.slotPx + 'px');
+  // ---- En sammanslagen tavla för hela veckan ------------------------------
+  // Alla dagar staplas vertikalt i EN skrollbar tavla med gemensamma (globala)
+  // plats-/zon-kolumner och en klistrad kolumnrubrik. Vänsteraxeln visar tid
+  // OCH dag. Eventen byggs i flödeslistorna och flyttas hit av VIEW.
+  const DAY_HEAD_H = 30;   // höjd på dagrubrik-bandet i varje dagblock
+  const MERGED_PAD = 10;   // luft över/under hela tavlan
 
+  // Lägg dagblocken efter varandra och ge varje datum sin y-position. evTop är
+  // dagens tidslinje-start (px); headTop är dagrubrikens topp.
+  function computeDayGeometry() {
+    const geo = { headTop: {}, evTop: {}, total: 0, laneW: LANE_W };
+    let y = MERGED_PAD;
+    (DATA.days || []).forEach(d => {
+      geo.headTop[d.date] = y;
+      geo.evTop[d.date] = y + DAY_HEAD_H;
+      y += DAY_HEAD_H + d.trackH;
+    });
+    geo.total = y + MERGED_PAD;
+    return geo;
+  }
+
+  function buildMergedBoard() {
+    const geo = computeDayGeometry();
+    window.MV_GEO = geo;                 // delas med VIEW (positionering) och nav (hopp)
+    const total = geo.total;
+    const scroll = el('div', 'board-scroll merged');
+    const board = el('div', 'board merged');
+
+    // Bakgrundslager (bakom kolumnerna): per dag ett rubrikband + timrutnät.
+    const grid = el('div', 'grid-layer'); grid.style.height = total + 'px';
+    (DATA.days || []).forEach(d => {
+      const strip = el('div', 'day-strip');
+      strip.style.top = geo.headTop[d.date] + 'px';
+      strip.style.height = DAY_HEAD_H + 'px';
+      grid.appendChild(strip);
+      const g = el('div', 'day-grid');
+      g.style.top = geo.evTop[d.date] + 'px';
+      g.style.height = d.trackH + 'px';
+      g.style.backgroundSize = '100% ' + d.slotPx + 'px';
+      grid.appendChild(g);
+    });
+    board.appendChild(grid);
+
+    // Vänsteraxel (klistrad): per dag ett dag-namn följt av tidsstreck.
     const axis = el('div', 'axis-col');
     const ah = el('div', 'axis-head'); ah.textContent = 'Tid'; axis.appendChild(ah);
     const ab = el('div', 'axis-body');
-    ab.style.height = 'calc(var(--vis,' + d.trackH + 'px) + 2 * var(--board-pad))';
-    const ai = el('div', 'axis-inner'); ai.style.height = d.trackH + 'px';
-    (d.ticks || []).forEach(tk => {
-      const t = el('div', 'tick' + (tk.hour ? ' hour' : ''));
-      t.style.top = tk.top + 'px'; t.textContent = tk.label;
-      ai.appendChild(t);
+    const ai = el('div', 'axis-inner-m'); ai.style.height = total + 'px';
+    (DATA.days || []).forEach(d => {
+      const dl = el('div', 'day-label'); dl.id = 'mday-' + d.date;
+      dl.style.top = geo.headTop[d.date] + 'px'; dl.style.height = DAY_HEAD_H + 'px';
+      const parts = (d.label || '').split(' ');
+      const wd = el('span', 'dl-wd'); wd.textContent = parts[0] || d.label;
+      const dt = el('span', 'dl-dt'); dt.textContent = parts.slice(1).join(' ');
+      dl.appendChild(wd); if (dt.textContent) dl.appendChild(dt);
+      ai.appendChild(dl);
+      (d.ticks || []).forEach(tk => {
+        const t = el('div', 'tick' + (tk.hour ? ' hour' : ''));
+        t.style.top = (geo.evTop[d.date] + tk.top) + 'px'; t.textContent = tk.label;
+        ai.appendChild(t);
+      });
     });
     ab.appendChild(ai); axis.appendChild(ab); board.appendChild(axis);
 
-    // Plats-kolumner (en per plats med program den dagen), bredd = laneCount × LANE_W
-    // så korten får konstant bredd. Tomma/bortfiltrerade döljs av SCRIPT.apply().
-    // Korten byggs i flödeslistan och flyttas hit av VIEW när Alla platser aktiveras.
-    (d.venues || []).forEach(v => {
+    // Globala plats-kolumner (en per plats, bredd = veckans max laneCount × LANE_W).
+    (DATA.venueCols || []).forEach(v => {
       const col = el('div', 'venue-col');
       col.setAttribute('data-venue', v.venue);
       col.style.width = (v.laneCount * LANE_W) + 'px';
@@ -217,12 +272,12 @@
       vh.appendChild(ic); vh.appendChild(document.createTextNode(' ')); vh.appendChild(nm);
       col.appendChild(vh);
       const track = el('div', 'track');
-      const ti = el('div', 'track-inner'); ti.style.height = d.trackH + 'px';
+      const ti = el('div', 'track-inner-m'); ti.style.height = total + 'px';
       track.appendChild(ti); col.appendChild(track); board.appendChild(col);
     });
 
-    // Zon-kolumner (tomma), bredd = laneCount × LANE_W → konstant kortbredd.
-    (d.zones || []).forEach(z => {
+    // Globala zon-kolumner (en per zon).
+    (DATA.zoneCols || []).forEach(z => {
       const col = el('div', 'zone-col');
       col.setAttribute('data-zone', z.id);
       col.style.width = (z.laneCount * LANE_W) + 'px';
@@ -233,7 +288,7 @@
       }
       col.appendChild(zh);
       const track = el('div', 'track');
-      const ti = el('div', 'track-inner'); ti.style.height = d.trackH + 'px';
+      const ti = el('div', 'track-inner-m'); ti.style.height = total + 'px';
       track.appendChild(ti); col.appendChild(track); board.appendChild(col);
     });
 
@@ -242,6 +297,8 @@
   }
 
   // ---- Alla dagar ---------------------------------------------------------
+  // Varje dag får en sektion med sin flödeslista (Flöde-vyn). Tidslinje-vyerna
+  // använder i stället EN sammanslagen tavla som läggs sist i #mv-days.
   function renderDays() {
     const main = document.getElementById('mv-days');
     if (!main) return;
@@ -251,9 +308,9 @@
       sec.id = 'day-' + d.date;
       const h2 = document.createElement('h2'); h2.textContent = d.title; sec.appendChild(h2);
       sec.appendChild(buildFlowList(d));
-      sec.appendChild(buildBoard(d));
       main.appendChild(sec);
     });
+    main.appendChild(buildMergedBoard());
   }
 
   renderNav();
@@ -298,30 +355,48 @@
   function placeEvent(node, target) {
     if (target === 'flow') return;   // listrader är statiska – CSS sköter layouten
     const zone = target === 'zones';
-    const L = zone ? node.dataset.zleft : node.dataset.vleft;
-    const W = zone ? node.dataset.zwidth : node.dataset.vwidth;
-    if (L != null) node.style.left = L + '%';
-    if (W != null) node.style.width = 'calc(' + W + '% - 3px)';
+    const lane = +(zone ? node.dataset.zlane : node.dataset.vlane) || 0;
+    const span = +(zone ? node.dataset.zspan : node.dataset.vspan) || 1;
+    const geo = window.MV_GEO || {};
+    const laneW = geo.laneW || 150;
+    node.style.left = (lane * laneW) + 'px';
+    node.style.width = 'calc(' + (span * laneW) + 'px - 3px)';
+    const base = (geo.evTop && geo.evTop[node.dataset.date]) || 0;
+    node.style.top = (base + (+node.dataset.ptop || 0)) + 'px';
   }
-  function destFor(day, target, node) {
-    if (target === 'flow') return day.querySelector('.flow-list');
+  function destFor(target, node) {
+    if (target === 'flow') {
+      const sec = document.getElementById('day-' + node.dataset.date);
+      return sec ? sec.querySelector('.flow-list') : null;
+    }
     if (target === 'zones')
-      return day.querySelector('.zone-col[data-zone="' + (node.dataset.zone || 'Z?') + '"] .track-inner');
-    return day.querySelector('.venue-col[data-venue="' + node.dataset.venue + '"] .track-inner');
+      return document.querySelector('.board.merged .zone-col[data-zone="' +
+        (node.dataset.zone || 'Z?') + '"] .track-inner-m');
+    return document.querySelector('.board.merged .venue-col[data-venue="' +
+      node.dataset.venue + '"] .track-inner-m');
   }
   function moveTo(target) {
     if (placed === target) return;
-    document.querySelectorAll('section.day').forEach(day => {
-      let nodes = Array.prototype.slice.call(day.querySelectorAll('.event'));
-      // Flödet ska vara kronologiskt – sortera innan de läggs tillbaka i listan.
-      if (target === 'flow') nodes.sort((a, b) =>
-        (+a.dataset.s - +b.dataset.s) || (+a.dataset.e - +b.dataset.e) ||
-        (a.dataset.title < b.dataset.title ? -1 : 1));
+    const nodes = Array.prototype.slice.call(document.querySelectorAll('.event'));
+    if (target === 'flow') {
+      // Gruppera per dag och lägg tillbaka kronologiskt i varje dags lista.
+      const byDay = {};
+      nodes.forEach(n => { (byDay[n.dataset.date] = byDay[n.dataset.date] || []).push(n); });
+      Object.keys(byDay).forEach(date => {
+        const sec = document.getElementById('day-' + date);
+        const list = sec ? sec.querySelector('.flow-list') : null;
+        if (!list) return;
+        byDay[date].sort((a, b) =>
+          (+a.dataset.s - +b.dataset.s) || (+a.dataset.e - +b.dataset.e) ||
+          (a.dataset.title < b.dataset.title ? -1 : 1));
+        byDay[date].forEach(n => { list.appendChild(n); placeEvent(n, target); });
+      });
+    } else {
       nodes.forEach(node => {
-        const dest = destFor(day, target, node);
+        const dest = destFor(target, node);
         if (dest) { dest.appendChild(node); placeEvent(node, target); }
       });
-    });
+    }
     placed = target;
     if (window.MV) window.MV.syncAll();
     if (window.MVFILTER) window.MVFILTER.apply();
@@ -559,34 +634,6 @@
   const activeCats = new Set(catBoxes.map(b => b.value));
   const activeVenues = new Set(venueBoxes.map(b => b.value));
 
-  // Shrink each day's timeline to the visible time span (great when filtering favourites).
-  function adaptDays() {
-    document.querySelectorAll('.board').forEach(board => {
-      const dayStart = +board.dataset.dayStart;
-      const dayEnd = +board.dataset.dayEnd;
-      const slot = +board.dataset.slot || 30;
-      const px = parseFloat(board.dataset.px) || 1;
-      let lo = Infinity, hi = -Infinity;
-      board.querySelectorAll('.event').forEach(ev => {
-        if (ev.classList.contains('hidden')) return;
-        const s = +ev.dataset.s, e = +ev.dataset.e;
-        if (s < lo) lo = s;
-        if (e > hi) hi = e;
-      });
-      let off, vis;
-      if (lo === Infinity) {
-        off = 0; vis = (dayEnd - dayStart) * px;
-      } else {
-        const startSnap = dayStart + Math.floor((lo - dayStart) / slot) * slot;
-        const endSnap = dayStart + Math.ceil((hi - dayStart) / slot) * slot;
-        off = (startSnap - dayStart) * px;
-        vis = Math.max((endSnap - startSnap) * px, slot * px);
-      }
-      board.style.setProperty('--off', off + 'px');
-      board.style.setProperty('--vis', vis + 'px');
-    });
-  }
-
   function apply() {
     const term = (q.value || '').trim().toLowerCase();
     const onlyFav = favOnly && favOnly.checked;
@@ -618,14 +665,16 @@
       const hasVisible = venueOn && col.querySelector('.event:not(.hidden)') !== null;
       col.classList.toggle('hidden', !hasVisible);
     });
-    // Hide days with no visible events (event-noderna ligger i aktiv vys kolumner).
+    // Dölj tomma dagar: räkna synliga event per datum globalt (noderna kan ligga
+    // i flödeslistor ELLER i den sammanslagna tavlan beroende på vy).
+    const seenDate = {};
+    for (const el of events) if (!el.classList.contains('hidden')) seenDate[el.dataset.date] = true;
     document.querySelectorAll('section.day').forEach(day => {
-      const any = day.querySelector('.event:not(.hidden)') !== null;
+      const any = !!seenDate[day.id.replace(/^day-/, '')];
       day.classList.toggle('empty', !any);
       const link = document.querySelector('nav.days a[href="#' + day.id + '"]');
       if (link) link.classList.toggle('empty', !any);
     });
-    adaptDays();
     countEl.textContent = 'Visar ' + visible + ' av ' + total + ' programpunkter';
   }
 
@@ -803,25 +852,29 @@
   }
 
   function collect() {
-    const days = [];
-    document.querySelectorAll('section.day').forEach(sec => {
-      const rows = [];
-      sec.querySelectorAll('.event').forEach(el => {
-        if (!window.MV || !window.MV.isFav(el.dataset.id)) return;
-        rows.push({
-          s: +el.dataset.s,
-          time: el.dataset.time || '',
-          title: el.dataset.title || '',
-          venue: el.dataset.venue || '',
-          org: el.dataset.org || '',
-          ticket: !!el.dataset.ticket,
-          bought: window.MV.isBought(el.dataset.id),
-        });
+    // Event-noderna kan ligga i flödeslistor eller den sammanslagna tavlan, så
+    // samla globalt och gruppera per datum (oberoende av aktiv vy).
+    const byDate = {};
+    document.querySelectorAll('.event').forEach(el => {
+      if (!window.MV || !window.MV.isFav(el.dataset.id)) return;
+      const date = el.dataset.date || '';
+      (byDate[date] = byDate[date] || []).push({
+        s: +el.dataset.s,
+        time: el.dataset.time || '',
+        title: el.dataset.title || '',
+        venue: el.dataset.venue || '',
+        org: el.dataset.org || '',
+        ticket: !!el.dataset.ticket,
+        bought: window.MV.isBought(el.dataset.id),
       });
-      if (rows.length) {
-        rows.sort((a, b) => a.s - b.s || a.title.localeCompare(b.title, 'sv'));
-        days.push({ heading: dayHeading(sec), rows: rows });
-      }
+    });
+    const days = [];
+    Object.keys(byDate).sort().forEach(date => {
+      const rows = byDate[date];
+      rows.sort((a, b) => a.s - b.s || a.title.localeCompare(b.title, 'sv'));
+      const sec = document.getElementById('day-' + date);
+      const h = sec ? sec.querySelector('h2') : null;
+      days.push({ heading: h ? h.textContent.trim() : date, rows: rows });
     });
     return days;
   }
@@ -921,17 +974,14 @@
 
   function collectFavs() {
     const items = [];
-    document.querySelectorAll('section.day').forEach(sec => {
-      const date = sec.id.replace(/^day-/, '');
-      sec.querySelectorAll('.event').forEach(el => {
-        if (!window.MV || !window.MV.isFav(el.dataset.id)) return;
-        items.push({
-          id: el.dataset.id, date: date, s: +el.dataset.s, e: +el.dataset.e,
-          title: el.dataset.title || '', venue: el.dataset.venue || '',
-          org: el.dataset.org || '', cat: el.dataset.cat || '',
-          desc: el.dataset.desc || '', ticket: el.dataset.ticket || '',
-          bought: window.MV.isBought(el.dataset.id),
-        });
+    document.querySelectorAll('.event').forEach(el => {
+      if (!window.MV || !window.MV.isFav(el.dataset.id)) return;
+      items.push({
+        id: el.dataset.id, date: el.dataset.date || '', s: +el.dataset.s, e: +el.dataset.e,
+        title: el.dataset.title || '', venue: el.dataset.venue || '',
+        org: el.dataset.org || '', cat: el.dataset.cat || '',
+        desc: el.dataset.desc || '', ticket: el.dataset.ticket || '',
+        bought: window.MV.isBought(el.dataset.id),
       });
     });
     return items;

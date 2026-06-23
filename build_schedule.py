@@ -105,6 +105,7 @@ def _event_record(p: Placement, day: DayLayout, lane_count: int) -> dict:
     rec: dict[str, object] = {
         "id": event_dom_id(e), "s": e.start_min, "e": e.end_min,
         "top": top, "height": height, "left": left, "width": width,
+        "vlane": p.lane, "vspan": p.span,
         "color": color, "short": height < 34,
         "title": e.title, "time": time_txt, "venue": e.venue,
         "cat": e.category or "", "catKey": e.category if e.category else NO_CATEGORY,
@@ -194,6 +195,8 @@ def _day_record(layout: DayLayout, day_events: list[Event], venue_meta: dict[str
             rec["zColor"] = ZONE_COLORS.get(z, DEFAULT_ZONE_COLOR)
             rec["zLeft"] = round(lane / lane_count * 100, 4)
             rec["zWidth"] = round(span / lane_count * 100, 4)
+            rec["zlane"] = lane
+            rec["zspan"] = span
             ic = rec.get("icon")
             if ic and ic not in icons:
                 icons.append(ic)
@@ -282,6 +285,35 @@ def _data_payload(events: list[Event], slot_minutes: int, ics_endpoint: str) -> 
     zone_of = {v: (info.get("zon") if info else None) for v, info in venue_meta.items()}
     days = [_day_record(l, by_day[l.date], venue_meta, zone_of, meta["zones"]) for l in layouts]
 
+    # Globala (vecko-)kolumner för den sammanslagna tavlan: en kolumn per plats/zon.
+    # Bredden styrs av största antal samtidiga spår under hela veckan (busy day
+    # vinner) så varje kolumn räcker till sin mest fullbokade dag.
+    venue_lane_max: dict[str, int] = {}
+    for d in days:
+        for v in d["venues"]:
+            venue_lane_max[v["venue"]] = max(venue_lane_max.get(v["venue"], 1), v["laneCount"])
+    venue_cols = [{
+        "venue": v,
+        "icon": venue_meta.get(v, {}).get("icon", DEFAULT_VENUE_ICON),
+        "laneCount": venue_lane_max.get(v, 1),
+    } for v in venues]
+
+    zone_order = [z["id"] for z in meta["zones"]] + ["Z?"]
+    zone_agg: dict[str, dict] = {}
+    for d in days:
+        for z in d["zones"]:
+            a = zone_agg.setdefault(z["id"], {
+                "label": z["label"], "color": z["color"], "laneCount": 1, "icons": [],
+            })
+            a["laneCount"] = max(a["laneCount"], z["laneCount"])
+            for ic in z.get("icons", []):
+                if ic not in a["icons"]:
+                    a["icons"].append(ic)
+    zone_cols = [{
+        "id": zid, "label": zone_agg[zid]["label"], "color": zone_agg[zid]["color"],
+        "icons": zone_agg[zid]["icons"][:6], "laneCount": zone_agg[zid]["laneCount"],
+    } for zid in zone_order if zid in zone_agg]
+
     return {
         "icsEndpoint": ics_endpoint or "",
         "cats": cat_items,
@@ -289,6 +321,8 @@ def _data_payload(events: list[Event], slot_minutes: int, ics_endpoint: str) -> 
         "venueMeta": venue_meta,
         "types": meta["types"],
         "zones": meta["zones"],
+        "venueCols": venue_cols,
+        "zoneCols": zone_cols,
         "days": days,
     }
 
