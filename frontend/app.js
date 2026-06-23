@@ -144,9 +144,8 @@
     if (ev.cat || (ev.status && !ev.ticket)) {
       const meta = el('div', 'meta');
       if (ev.cat) {
-        const b = el('span', 'tag');
-        b.appendChild(el('i', 'dot'));
-        b.appendChild(document.createTextNode(ev.cat));
+        // Fylld kategorifärg som i detaljvyns badge (samma färgsättning).
+        const b = el('span', 'tag cat'); b.textContent = ev.cat;
         meta.appendChild(b);
       }
       if (ev.status && !ev.ticket) {
