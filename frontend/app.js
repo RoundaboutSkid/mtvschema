@@ -1126,6 +1126,18 @@
     open.appendChild(title);
     if (org.textContent) open.appendChild(org);
 
+    const ticketed = !!el.dataset.ticket;
+    let ticket = null;
+    if (ticketed) {
+      ticket = document.createElement('span');
+      ticket.className = 'map-ticket';
+      ticket.setAttribute('aria-hidden', 'true');
+      const bought = !!(window.MV && window.MV.isBought(el.dataset.id));
+      ticket.classList.toggle('bought', bought);
+      ticket.title = bought ? 'Biljett köpt' : 'Det här eventet kräver biljett';
+      ticket.textContent = '\uD83C\uDF9F';
+    }
+
     const fav = document.createElement('button');
     fav.type = 'button';
     fav.className = 'map-fav';
@@ -1140,6 +1152,7 @@
     });
 
     row.appendChild(open);
+    if (ticket) row.appendChild(ticket);
     row.appendChild(fav);
     return row;
   }

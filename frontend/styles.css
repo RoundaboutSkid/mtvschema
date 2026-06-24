@@ -198,17 +198,21 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
 .map-place:hover { color:var(--ink); border-color:var(--header-bg); }
 .map-place.active { color:#fff; background:var(--header-bg); border-color:var(--header-bg); }
 .map-list { display:flex; flex-direction:column; gap:8px; }
-.map-event { display:grid; grid-template-columns:minmax(0,1fr) 34px; gap:8px; align-items:center;
+.map-event { display:grid; grid-template-columns:minmax(0,1fr) 28px 34px; gap:8px; align-items:center;
   border:1px solid var(--line); border-left:4px solid var(--header-bg); border-radius:8px;
   background:#faf7f2; padding:7px 8px; }
-.map-event-main { min-width:0; display:flex; flex-direction:column; gap:2px; text-align:left;
+.map-event-main { grid-column:1; min-width:0; display:flex; flex-direction:column; gap:2px; text-align:left;
   border:0; background:transparent; padding:0; color:inherit; cursor:pointer; }
 .map-event-main:hover .map-event-title { text-decoration:underline; }
 .map-event-when { color:var(--muted); font-size:.76rem; font-weight:800; text-transform:capitalize; }
 .map-event-title { color:var(--ink); font-size:.86rem; font-weight:800; line-height:1.2; }
 .map-event-org { color:var(--muted); font-size:.78rem; font-weight:600; white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis; }
-.map-fav { width:32px; height:32px; border-radius:50%; border:1px solid var(--line2);
+.map-ticket { grid-column:2; width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+  border-radius:50%; background:rgba(0,0,0,.06); font-size:.95rem; line-height:1;
+  filter:saturate(1.15); }
+.map-ticket.bought { filter:hue-rotate(125deg) saturate(1.5) brightness(.95); }
+.map-fav { grid-column:3; width:32px; height:32px; border-radius:50%; border:1px solid var(--line2);
   background:#fff; color:var(--muted); font-size:1.05rem; line-height:1; cursor:pointer; }
 .map-fav:hover { border-color:#d99a00; color:#7a5b00; }
 .map-fav.on { background:#e0a21a; border-color:#e0a21a; color:#fff; }
