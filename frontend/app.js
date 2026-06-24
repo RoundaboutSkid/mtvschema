@@ -144,12 +144,6 @@
       vl.appendChild(lab);
     });
 
-    const updateCompactPanelTop = () => {
-      const bar = document.getElementById('mv-controlbar') || tb;
-      const rect = bar.getBoundingClientRect();
-      document.documentElement.style.setProperty('--compact-panel-top',
-        Math.max(8, Math.round(rect.bottom + 8)) + 'px');
-    };
     const closePops = () => tb.querySelectorAll('.compact-pop.open').forEach(pop => {
       pop.classList.remove('open');
       const btn = pop.querySelector('.compact-toggle');
@@ -163,15 +157,10 @@
         ev.stopPropagation();
         const open = pop.classList.contains('open');
         closePops();
-        updateCompactPanelTop();
         pop.classList.toggle('open', !open);
         btn.setAttribute('aria-expanded', !open ? 'true' : 'false');
       });
     });
-    window.addEventListener('resize', updateCompactPanelTop);
-    window.addEventListener('scroll', () => {
-      if (tb.querySelector('.compact-pop.open')) updateCompactPanelTop();
-    }, { passive: true });
     tb.querySelectorAll('.compact-day-panel a').forEach(a => a.addEventListener('click', closePops));
     document.addEventListener('click', ev => {
       if (!tb.contains(ev.target)) closePops();
@@ -353,15 +342,27 @@
     head.appendChild(h2);
     head.appendChild(count);
 
+    const chooser = el('div', 'map-place-chooser');
+    const placeToggle = document.createElement('button');
+    placeToggle.type = 'button';
+    placeToggle.className = 'map-place-toggle';
+    placeToggle.id = 'map-place-toggle';
+    placeToggle.setAttribute('aria-controls', 'map-places');
+    placeToggle.setAttribute('aria-expanded', 'false');
+    placeToggle.textContent = 'Byt plats';
     const places = el('div', 'map-places');
     places.id = 'map-places';
+    places.hidden = true;
+    chooser.appendChild(placeToggle);
+    chooser.appendChild(places);
+    head.appendChild(chooser);
+
     const list = el('div', 'map-list');
     list.id = 'map-list';
     const missing = el('div', 'map-missing');
     missing.id = 'map-missing';
 
     panel.appendChild(head);
-    panel.appendChild(places);
     panel.appendChild(list);
     panel.appendChild(missing);
     layout.appendChild(canvas);
@@ -1084,10 +1085,12 @@
   const canvas = document.getElementById('mv-map');
   const titleEl = document.getElementById('map-title');
   const countEl = document.getElementById('map-count');
+  const placeToggle = document.getElementById('map-place-toggle');
+  const placeChooser = placeToggle ? placeToggle.closest('.map-place-chooser') : null;
   const placesEl = document.getElementById('map-places');
   const listEl = document.getElementById('map-list');
   const missingEl = document.getElementById('map-missing');
-  let map = null, layer = null, selectedKey = '', groups = [], missingCount = 0;
+  let map = null, layer = null, selectedKey = '', groups = [], missingCount = 0, placesOpen = false;
   const SELECT_ZOOM = 16;
 
   function dayTitle(date) {
@@ -1185,9 +1188,22 @@
       btn.className = 'map-place';
       btn.classList.toggle('active', g.key === selectedKey);
       btn.textContent = g.venue + ' (' + g.events.length + ')';
-      btn.addEventListener('click', () => select(g.key, true));
+      btn.addEventListener('click', () => {
+        placesOpen = false;
+        select(g.key, true);
+      });
       placesEl.appendChild(btn);
     });
+  }
+
+  function renderPlaceChooser() {
+    const selected = groups.find(g => g.key === selectedKey);
+    if (placeToggle) {
+      placeToggle.hidden = !groups.length;
+      placeToggle.textContent = selected ? 'Byt plats' : 'Välj plats';
+      placeToggle.setAttribute('aria-expanded', placesOpen ? 'true' : 'false');
+    }
+    if (placesEl) placesEl.hidden = !placesOpen || !groups.length;
   }
 
   function renderEventRow(el) {
@@ -1285,6 +1301,7 @@
         : '';
     }
     renderPlaces();
+    renderPlaceChooser();
   }
 
   function select(key, pan) {
@@ -1304,6 +1321,7 @@
     opts = opts || {};
     groups = collectGroups();
     if (!groups.some(g => g.key === selectedKey)) selectedKey = groups[0] ? groups[0].key : '';
+    if (!groups.length) placesOpen = false;
     renderPanel();
     if (document.body.dataset.view === 'map') ensureMap();
     renderMarkers(opts.fit !== false);
@@ -1338,6 +1356,18 @@
     refresh({ fit: false });
     return select(key, true);
   }
+
+  if (placeToggle) {
+    placeToggle.addEventListener('click', () => {
+      placesOpen = !placesOpen;
+      renderPlaceChooser();
+    });
+  }
+  document.addEventListener('click', ev => {
+    if (!placesOpen || !placeChooser || placeChooser.contains(ev.target)) return;
+    placesOpen = false;
+    renderPlaceChooser();
+  });
 
   if (window.MV) window.MV.onChange(() => refresh({ fit: false }));
   window.MVMAP = {
