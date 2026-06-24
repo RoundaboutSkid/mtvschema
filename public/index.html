@@ -50,6 +50,9 @@ button.reset { font:inherit; font-size:.8rem; font-weight:600; padding:6px 12px;
 .favtoggle { display:inline-flex; align-items:center; gap:6px; font-size:.8rem; font-weight:600;
   padding:6px 12px; border:1px solid var(--line2); border-radius:8px; background:#fff; cursor:pointer; }
 .favtoggle input { accent-color:#d99a00; margin:0; }
+.compact-pop, .compact-panel { display:contents; }
+.compact-toggle { display:none; }
+.day-pop { display:none; }
 
 .viewbar { display:flex; align-items:center; gap:10px; padding:12px 24px 0; }
 .viewswitch { display:inline-flex; background:#fff; border:1px solid var(--line2);
@@ -59,6 +62,73 @@ button.reset { font:inherit; font-size:.8rem; font-weight:600; padding:6px 12px;
   display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
 .viewswitch .vbtn:hover { color:var(--ink); background:var(--bg); }
 .viewswitch .vbtn[aria-pressed="true"] { background:var(--header-bg); color:#fff; }
+
+@media (max-width:780px), (max-height:650px) {
+  :root { --board-max-h:calc(100dvh - 138px); }
+  header.top { padding:8px 10px 2px; }
+  header.top h1 { font-size:1.28rem; line-height:1.12; margin:0; }
+  header.top p { display:none; }
+  .controlbar { position:sticky; top:0; z-index:35; display:grid;
+    grid-template-columns:auto minmax(150px,1fr) auto auto auto; align-items:center;
+    gap:6px; padding:8px 10px; background:rgba(250,247,241,.98);
+    backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+  .viewbar, .toolbar { display:contents; position:static; padding:0; border:0;
+    background:transparent; backdrop-filter:none; }
+  .viewswitch { grid-column:1; max-width:100%; min-width:0; }
+  .viewswitch .vbtn { min-width:38px; justify-content:center; padding:6px 8px;
+    font-size:.78rem; }
+  nav.days { display:none; }
+  .toolbar input[type=search] { grid-column:2; width:100%; min-width:0; }
+  .day-pop, .filter-pop, .more-pop { display:block; position:relative; }
+  .day-pop { grid-column:3; }
+  .filter-pop { grid-column:4; }
+  .more-pop { grid-column:5; }
+  .compact-pop { display:block; }
+  .compact-toggle { display:inline-flex; align-items:center; justify-content:center;
+    min-height:34px; padding:6px 10px; border:1px solid var(--line2); border-radius:8px;
+    background:#fff; color:var(--ink); font:inherit; font-size:.78rem; font-weight:800;
+    white-space:nowrap; cursor:pointer; }
+  .compact-toggle::after { content:' \25be'; color:var(--muted); font-size:.72rem; }
+  .compact-pop.open .compact-toggle { border-color:var(--header-bg); color:var(--header-bg); }
+  .compact-panel { display:none; }
+  .compact-pop.open .compact-panel { position:fixed; left:10px; right:10px;
+    top:var(--compact-panel-top, 70px); z-index:80;
+    max-height:min(72dvh, calc(100dvh - var(--compact-panel-top, 70px) - 10px));
+    overflow:auto; overscroll-behavior:contain; padding:12px;
+    border:1px solid var(--line2); border-radius:12px; background:#fff;
+    box-shadow:0 16px 40px rgba(0,0,0,.24); }
+  .day-pop.open .compact-panel { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .compact-filter-panel, .compact-more-panel { gap:8px; }
+  .filter-pop.open .compact-panel,
+  .more-pop.open .compact-panel { display:flex; flex-direction:column; }
+  .compact-day-panel a { text-decoration:none; text-align:center; font-weight:800; font-size:.9rem;
+    padding:10px 8px; border-radius:8px; color:var(--header-bg); border:1px solid var(--line);
+    background:#fffaf0; }
+  .compact-day-panel a.empty { opacity:.32; pointer-events:none; }
+  .compact-filter-panel .filtermenu { position:static; width:100%; }
+  .compact-filter-panel .filtermenu > summary { width:100%; }
+  .compact-filter-panel .filterpanel { position:static; width:100%; max-height:none;
+    margin-top:6px; box-shadow:none; border-color:var(--line); }
+  .compact-filter-panel .filtertools { flex-wrap:wrap; }
+  .compact-filter-panel .filtertools .vfilter { width:100%; min-width:0; flex:1 0 100%; }
+  .compact-filter-panel .favtoggle,
+  .compact-filter-panel .reset,
+  .compact-more-panel .reset { width:100%; justify-content:center; min-height:38px; }
+  .count { grid-column:1 / -1; margin-left:0; font-size:.76rem; }
+}
+
+@media (max-width:560px) {
+  :root { --board-max-h:calc(100dvh - 156px); }
+  .controlbar { grid-template-columns:minmax(0,1fr) auto auto auto; }
+  .viewswitch { grid-column:1 / -1; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); width:100%; }
+  .viewswitch .vbtn { padding:6px 5px; }
+  .toolbar input[type=search] { grid-column:1; }
+  .day-pop { grid-column:2; }
+  .filter-pop { grid-column:3; }
+  .more-pop { grid-column:4; }
+  .compact-toggle { padding:6px 8px; }
+  .count { display:none; }
+}
 
 section.day { padding:16px 24px 34px; }
 section.day h2 { margin:0 0 10px; text-transform:capitalize; }
@@ -371,9 +441,11 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
       Kontrollera biljettkrävande punkter mot originalprogrammet före bokning.</p>
   </header>
 
-  <div id="mv-viewbar" class="viewbar"></div>
-  <nav class="days" id="mv-nav"></nav>
-  <div class="toolbar" id="mv-toolbar"></div>
+  <div class="controlbar" id="mv-controlbar">
+    <div id="mv-viewbar" class="viewbar"></div>
+    <nav class="days" id="mv-nav"></nav>
+    <div class="toolbar" id="mv-toolbar"></div>
+  </div>
   <main id="mv-days"></main>
 
   <!-- Detaljvy (event-modal) -->
@@ -485,6 +557,25 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
     return n;
   }
 
+  function wireDayLink(a, d) {
+    a.classList.add('daylink');
+    a.addEventListener('click', e => {
+      if (document.body.dataset.view === 'flow') return;
+      if (document.body.dataset.view === 'map') {
+        if (window.MVMAP && window.MVMAP.selectDate(d.date)) e.preventDefault();
+        return;
+      }
+      if (document.body.dataset.view === 'guide') {
+        const sc = document.querySelector('.guide-scroll.merged-guide');
+        const day = document.querySelector('.guide-day[data-date="' + d.date + '"]');
+        if (sc && day) {
+          e.preventDefault();
+          sc.scrollTop = Math.max(0, day.offsetTop - 34);
+        }
+      }
+    });
+  }
+
   // ---- Dag-navigering -----------------------------------------------------
   function renderNav() {
     const nav = document.getElementById('mv-nav');
@@ -497,22 +588,7 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
       // I programguiden ligger dagarna i den sammanslagna guideytan, så hoppa
       // genom att skrolla den. I kartvyn väljer dagknapparna första synliga
       // platsen för dagen.
-      a.addEventListener('click', e => {
-        if (document.body.dataset.view === 'flow') return;
-        if (document.body.dataset.view === 'map') {
-          if (window.MVMAP && window.MVMAP.selectDate(d.date)) e.preventDefault();
-          return;
-        }
-        if (document.body.dataset.view === 'guide') {
-          const sc = document.querySelector('.guide-scroll.merged-guide');
-          const day = document.querySelector('.guide-day[data-date="' + d.date + '"]');
-          if (sc && day) {
-            e.preventDefault();
-            sc.scrollTop = Math.max(0, day.offsetTop - 34);
-          }
-          return;
-        }
-      });
+      wireDayLink(a, d);
       nav.appendChild(a);
     });
   }
@@ -527,6 +603,13 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
       : "";
     tb.innerHTML =
       "<input id='q' type='search' placeholder='Sök titel, arrangör eller plats…' aria-label='Sök'>" +
+      "<div class='compact-pop day-pop'>" +
+      "<button type='button' class='compact-toggle' aria-expanded='false'>Gå till dag</button>" +
+      "<div class='compact-panel compact-day-panel' id='compactDayPanel'></div>" +
+      "</div>" +
+      "<div class='compact-pop filter-pop'>" +
+      "<button type='button' class='compact-toggle' aria-expanded='false'>Filter</button>" +
+      "<div class='compact-panel compact-filter-panel'>" +
       "<details class='filtermenu'><summary>Kategorier ▾</summary>" +
       "<div class='filterpanel'>" +
       "<div class='filtertools'>" +
@@ -545,12 +628,28 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
       "</div></details>" +
       "<label class='favtoggle'><input type='checkbox' id='favOnly'> ★ Bara favoriter</label>" +
       "<label class='favtoggle'><input type='checkbox' id='showHidden'> 👁 Visa dolda (<span id='hiddenCount'>0</span>)</label>" +
+      "<button class='reset' id='reset'>Återställ</button>" +
+      "</div>" +
+      "</div>" +
+      "<div class='compact-pop more-pop'>" +
+      "<button type='button' class='compact-toggle' aria-expanded='false'>Mer</button>" +
+      "<div class='compact-panel compact-more-panel'>" +
       "<button class='reset' id='unhideAll' title='Visa alla dolda event igen' style='display:none'>↩ Visa alla dolda</button>" +
       "<button class='reset' id='printFav' title='Öppna en utskriftsvänlig lista över dina favoriter'>★ Skriv ut favoriter</button>" +
       "<button class='reset' id='icsFav' title='Ladda ner dina favoriter som en kalenderfil (.ics)'>📅 Lägg till i kalender</button>" +
       subBtn +
-      "<button class='reset' id='reset'>Återställ</button>" +
+      "</div>" +
+      "</div>" +
       "<span class='count' id='count'></span>";
+
+    const dayPanel = tb.querySelector('#compactDayPanel');
+    (DATA.days || []).forEach(d => {
+      const a = document.createElement('a');
+      a.href = '#day-' + d.date;
+      a.textContent = d.label;
+      wireDayLink(a, d);
+      dayPanel.appendChild(a);
+    });
 
     const cl = tb.querySelector('#catList');
     (DATA.cats || []).forEach(c => {
@@ -573,6 +672,42 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
       lab.appendChild(inp);
       lab.appendChild(document.createTextNode(' ' + v));
       vl.appendChild(lab);
+    });
+
+    const updateCompactPanelTop = () => {
+      const bar = document.getElementById('mv-controlbar') || tb;
+      const rect = bar.getBoundingClientRect();
+      document.documentElement.style.setProperty('--compact-panel-top',
+        Math.max(8, Math.round(rect.bottom + 8)) + 'px');
+    };
+    const closePops = () => tb.querySelectorAll('.compact-pop.open').forEach(pop => {
+      pop.classList.remove('open');
+      const btn = pop.querySelector('.compact-toggle');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    });
+    tb.querySelectorAll('.compact-pop').forEach(pop => {
+      const btn = pop.querySelector('.compact-toggle');
+      if (!btn) return;
+      btn.addEventListener('click', ev => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const open = pop.classList.contains('open');
+        closePops();
+        updateCompactPanelTop();
+        pop.classList.toggle('open', !open);
+        btn.setAttribute('aria-expanded', !open ? 'true' : 'false');
+      });
+    });
+    window.addEventListener('resize', updateCompactPanelTop);
+    window.addEventListener('scroll', () => {
+      if (tb.querySelector('.compact-pop.open')) updateCompactPanelTop();
+    }, { passive: true });
+    tb.querySelectorAll('.compact-day-panel a').forEach(a => a.addEventListener('click', closePops));
+    document.addEventListener('click', ev => {
+      if (!tb.contains(ev.target)) closePops();
+    });
+    document.addEventListener('keydown', ev => {
+      if (ev.key === 'Escape') closePops();
     });
   }
 
@@ -1198,8 +1333,8 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
       const date = day.id.replace(/^day-/, '');
       const any = !!seenDate[date];
       day.classList.toggle('empty', !any);
-      const link = document.querySelector('nav.days a[href="#' + day.id + '"]');
-      if (link) link.classList.toggle('empty', !any);
+      document.querySelectorAll('a.daylink[href="#' + day.id + '"]').forEach(link =>
+        link.classList.toggle('empty', !any));
       const gday = document.querySelector('.guide-day[data-date="' + date + '"]');
       if (gday) gday.classList.toggle('hidden', !any);
     });

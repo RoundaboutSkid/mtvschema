@@ -27,6 +27,25 @@
     return n;
   }
 
+  function wireDayLink(a, d) {
+    a.classList.add('daylink');
+    a.addEventListener('click', e => {
+      if (document.body.dataset.view === 'flow') return;
+      if (document.body.dataset.view === 'map') {
+        if (window.MVMAP && window.MVMAP.selectDate(d.date)) e.preventDefault();
+        return;
+      }
+      if (document.body.dataset.view === 'guide') {
+        const sc = document.querySelector('.guide-scroll.merged-guide');
+        const day = document.querySelector('.guide-day[data-date="' + d.date + '"]');
+        if (sc && day) {
+          e.preventDefault();
+          sc.scrollTop = Math.max(0, day.offsetTop - 34);
+        }
+      }
+    });
+  }
+
   // ---- Dag-navigering -----------------------------------------------------
   function renderNav() {
     const nav = document.getElementById('mv-nav');
@@ -39,22 +58,7 @@
       // I programguiden ligger dagarna i den sammanslagna guideytan, så hoppa
       // genom att skrolla den. I kartvyn väljer dagknapparna första synliga
       // platsen för dagen.
-      a.addEventListener('click', e => {
-        if (document.body.dataset.view === 'flow') return;
-        if (document.body.dataset.view === 'map') {
-          if (window.MVMAP && window.MVMAP.selectDate(d.date)) e.preventDefault();
-          return;
-        }
-        if (document.body.dataset.view === 'guide') {
-          const sc = document.querySelector('.guide-scroll.merged-guide');
-          const day = document.querySelector('.guide-day[data-date="' + d.date + '"]');
-          if (sc && day) {
-            e.preventDefault();
-            sc.scrollTop = Math.max(0, day.offsetTop - 34);
-          }
-          return;
-        }
-      });
+      wireDayLink(a, d);
       nav.appendChild(a);
     });
   }
@@ -69,6 +73,13 @@
       : "";
     tb.innerHTML =
       "<input id='q' type='search' placeholder='Sök titel, arrangör eller plats…' aria-label='Sök'>" +
+      "<div class='compact-pop day-pop'>" +
+      "<button type='button' class='compact-toggle' aria-expanded='false'>Gå till dag</button>" +
+      "<div class='compact-panel compact-day-panel' id='compactDayPanel'></div>" +
+      "</div>" +
+      "<div class='compact-pop filter-pop'>" +
+      "<button type='button' class='compact-toggle' aria-expanded='false'>Filter</button>" +
+      "<div class='compact-panel compact-filter-panel'>" +
       "<details class='filtermenu'><summary>Kategorier ▾</summary>" +
       "<div class='filterpanel'>" +
       "<div class='filtertools'>" +
@@ -87,12 +98,28 @@
       "</div></details>" +
       "<label class='favtoggle'><input type='checkbox' id='favOnly'> ★ Bara favoriter</label>" +
       "<label class='favtoggle'><input type='checkbox' id='showHidden'> 👁 Visa dolda (<span id='hiddenCount'>0</span>)</label>" +
+      "<button class='reset' id='reset'>Återställ</button>" +
+      "</div>" +
+      "</div>" +
+      "<div class='compact-pop more-pop'>" +
+      "<button type='button' class='compact-toggle' aria-expanded='false'>Mer</button>" +
+      "<div class='compact-panel compact-more-panel'>" +
       "<button class='reset' id='unhideAll' title='Visa alla dolda event igen' style='display:none'>↩ Visa alla dolda</button>" +
       "<button class='reset' id='printFav' title='Öppna en utskriftsvänlig lista över dina favoriter'>★ Skriv ut favoriter</button>" +
       "<button class='reset' id='icsFav' title='Ladda ner dina favoriter som en kalenderfil (.ics)'>📅 Lägg till i kalender</button>" +
       subBtn +
-      "<button class='reset' id='reset'>Återställ</button>" +
+      "</div>" +
+      "</div>" +
       "<span class='count' id='count'></span>";
+
+    const dayPanel = tb.querySelector('#compactDayPanel');
+    (DATA.days || []).forEach(d => {
+      const a = document.createElement('a');
+      a.href = '#day-' + d.date;
+      a.textContent = d.label;
+      wireDayLink(a, d);
+      dayPanel.appendChild(a);
+    });
 
     const cl = tb.querySelector('#catList');
     (DATA.cats || []).forEach(c => {
@@ -115,6 +142,42 @@
       lab.appendChild(inp);
       lab.appendChild(document.createTextNode(' ' + v));
       vl.appendChild(lab);
+    });
+
+    const updateCompactPanelTop = () => {
+      const bar = document.getElementById('mv-controlbar') || tb;
+      const rect = bar.getBoundingClientRect();
+      document.documentElement.style.setProperty('--compact-panel-top',
+        Math.max(8, Math.round(rect.bottom + 8)) + 'px');
+    };
+    const closePops = () => tb.querySelectorAll('.compact-pop.open').forEach(pop => {
+      pop.classList.remove('open');
+      const btn = pop.querySelector('.compact-toggle');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    });
+    tb.querySelectorAll('.compact-pop').forEach(pop => {
+      const btn = pop.querySelector('.compact-toggle');
+      if (!btn) return;
+      btn.addEventListener('click', ev => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const open = pop.classList.contains('open');
+        closePops();
+        updateCompactPanelTop();
+        pop.classList.toggle('open', !open);
+        btn.setAttribute('aria-expanded', !open ? 'true' : 'false');
+      });
+    });
+    window.addEventListener('resize', updateCompactPanelTop);
+    window.addEventListener('scroll', () => {
+      if (tb.querySelector('.compact-pop.open')) updateCompactPanelTop();
+    }, { passive: true });
+    tb.querySelectorAll('.compact-day-panel a').forEach(a => a.addEventListener('click', closePops));
+    document.addEventListener('click', ev => {
+      if (!tb.contains(ev.target)) closePops();
+    });
+    document.addEventListener('keydown', ev => {
+      if (ev.key === 'Escape') closePops();
     });
   }
 
@@ -740,8 +803,8 @@
       const date = day.id.replace(/^day-/, '');
       const any = !!seenDate[date];
       day.classList.toggle('empty', !any);
-      const link = document.querySelector('nav.days a[href="#' + day.id + '"]');
-      if (link) link.classList.toggle('empty', !any);
+      document.querySelectorAll('a.daylink[href="#' + day.id + '"]').forEach(link =>
+        link.classList.toggle('empty', !any));
       const gday = document.querySelector('.guide-day[data-date="' + date + '"]');
       if (gday) gday.classList.toggle('hidden', !any);
     });
