@@ -186,6 +186,12 @@
     fav.type = 'button'; fav.setAttribute('aria-pressed', 'false');
     fav.title = 'Markera som favorit'; fav.textContent = '★'; acts.appendChild(fav);
     n.appendChild(acts);
+    const hide = el('button', 'event-hide');
+    hide.type = 'button';
+    hide.title = 'Dölj event';
+    hide.setAttribute('aria-label', 'Dölj event');
+    hide.textContent = '\u00d7';
+    n.appendChild(hide);
     return n;
   }
 
@@ -377,6 +383,13 @@
     return document.querySelector('.merged-guide .guide-track-inner[data-date="' + date + '"]');
   }
 
+  function clearGuidePlacement(node) {
+    node.style.left = '';
+    node.style.top = '';
+    node.style.width = '';
+    node.style.height = '';
+  }
+
   function placeGuideDay(date, nodes) {
     const track = guideTrack(date);
     if (!track) return;
@@ -436,7 +449,10 @@
         byDay[date].sort((a, b) =>
           (+a.dataset.s - +b.dataset.s) || (+a.dataset.e - +b.dataset.e) ||
           (a.dataset.title < b.dataset.title ? -1 : 1));
-        byDay[date].forEach(n => list.appendChild(n));
+        byDay[date].forEach(n => {
+          clearGuidePlacement(n);
+          list.appendChild(n);
+        });
       });
     } else if (target === 'guide') {
       const byDay = {};
@@ -611,6 +627,15 @@
   };
 
   document.addEventListener('click', ev => {
+    const hideBtn = ev.target.closest('.event-hide');
+    if (hideBtn) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const host = hideBtn.closest('.event');
+      if (host && window.MV) window.MV.requestHide(host.dataset.id);
+      return;
+    }
+
     const btn = ev.target.closest('.event-actions .act');
     if (!btn) return;
     ev.preventDefault();
@@ -963,7 +988,7 @@
 
   document.querySelectorAll('.event').forEach(el => {
     el.addEventListener('click', ev => {
-      if (ev.target.closest('a') || ev.target.closest('.event-actions')) return;
+      if (ev.target.closest('a') || ev.target.closest('.event-actions') || ev.target.closest('.event-hide')) return;
       openFor(el);
     });
   });
@@ -1105,6 +1130,8 @@
   function renderEventRow(el) {
     const row = document.createElement('div');
     row.className = 'map-event';
+    const hidden = !!(window.MV && window.MV.isHiddenEl(el));
+    row.classList.toggle('is-hidden', hidden);
     const open = document.createElement('button');
     open.type = 'button';
     open.className = 'map-event-main';
@@ -1151,9 +1178,20 @@
       if (window.MV && fav.dataset.id) window.MV.toggleFav(fav.dataset.id);
     });
 
+    const hide = document.createElement('button');
+    hide.type = 'button';
+    hide.className = 'map-hide';
+    hide.title = hidden ? 'Visa eventet igen' : 'Dölj event';
+    hide.setAttribute('aria-label', hidden ? 'Visa eventet igen' : 'Dölj event');
+    hide.textContent = '\u00d7';
+    hide.addEventListener('click', () => {
+      if (window.MV && el.dataset.id) window.MV.requestHide(el.dataset.id);
+    });
+
     row.appendChild(open);
     if (ticket) row.appendChild(ticket);
     row.appendChild(fav);
+    row.appendChild(hide);
     return row;
   }
 

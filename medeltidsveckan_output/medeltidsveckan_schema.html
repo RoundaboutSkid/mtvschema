@@ -91,6 +91,11 @@ section.day.empty { display:none; }
 .event-actions .tixmark { opacity:1; font-size:.82rem; line-height:1; filter:saturate(1.15); }
 .event-actions .tixmark.bought { filter:hue-rotate(125deg) saturate(1.5) brightness(.95); }
 .event.short .event-actions .tixmark { font-size:.7rem; }
+.event-hide { position:absolute; right:4px; bottom:3px; z-index:5; width:16px; height:16px;
+  border:0; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  padding:0; background:rgba(0,0,0,.07); color:var(--muted); font-size:.72rem;
+  line-height:1; cursor:pointer; opacity:.82; }
+.event-hide:hover { background:rgba(0,0,0,.14); color:var(--ink); opacity:1; }
 .event.is-hidden { opacity:.5; filter:grayscale(.55); }
 .event.is-hidden .ttl { text-decoration:line-through; }
 .event.needs-ticket { border-left-color:#e11d2a; }
@@ -112,8 +117,9 @@ body[data-view="map"] section.day { display:none; }
 .flow-list { display:none; }
 body[data-view="flow"] .flow-list { display:flex; flex-direction:column; gap:10px;
   max-width:880px; }
+body[data-view="flow"] .event.hidden { display:none; }
 body[data-view="flow"] .event {
-  position:static; top:auto; left:auto !important; height:auto !important; width:auto !important;
+  position:relative; top:auto; left:auto !important; height:auto !important; width:auto !important;
   max-width:none; display:grid; grid-template-columns:152px minmax(0,1fr) auto;
   column-gap:14px; row-gap:2px; align-content:start;
   background:#fff; border:1px solid var(--line); border-left:4px solid var(--zone,#bbb);
@@ -137,6 +143,7 @@ body[data-view="flow"] .event .meta { grid-column:2; grid-row:3; margin-top:5px;
 body[data-view="flow"] .event .event-actions { grid-column:3; grid-row:1; position:static;
   align-self:start; }
 body[data-view="flow"] .event .event-actions .act { opacity:.7; }
+body[data-view="flow"] .event .event-hide { right:14px; bottom:7px; }
 /* Listan visar allt innehåll oavsett varaktighet. */
 body[data-view="flow"] .event.short { padding:12px 14px; }
 body[data-view="flow"] .event.short .ttl { font-size:.95rem; }
@@ -206,14 +213,16 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
 .map-place:hover { color:var(--ink); border-color:var(--header-bg); }
 .map-place.active { color:#fff; background:var(--header-bg); border-color:var(--header-bg); }
 .map-list { display:flex; flex-direction:column; gap:8px; }
-.map-event { display:grid; grid-template-columns:minmax(0,1fr) 28px 34px; gap:8px; align-items:center;
+.map-event { position:relative; display:grid; grid-template-columns:minmax(0,1fr) 28px 34px; gap:8px; align-items:center;
   border:1px solid var(--line); border-left:4px solid var(--header-bg); border-radius:8px;
-  background:#faf7f2; padding:7px 8px; }
+  background:#faf7f2; padding:7px 8px 14px; }
+.map-event.is-hidden { opacity:.5; filter:grayscale(.55); }
 .map-event-main { grid-column:1; min-width:0; display:flex; flex-direction:column; gap:2px; text-align:left;
   border:0; background:transparent; padding:0; color:inherit; cursor:pointer; }
 .map-event-main:hover .map-event-title { text-decoration:underline; }
 .map-event-when { color:var(--muted); font-size:.76rem; font-weight:800; text-transform:capitalize; }
 .map-event-title { color:var(--ink); font-size:.86rem; font-weight:800; line-height:1.2; }
+.map-event.is-hidden .map-event-title { text-decoration:line-through; }
 .map-event-org { color:var(--muted); font-size:.78rem; font-weight:600; white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis; }
 .map-ticket { grid-column:2; width:28px; height:28px; display:flex; align-items:center; justify-content:center;
@@ -224,6 +233,11 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
   background:#fff; color:var(--muted); font-size:1.05rem; line-height:1; cursor:pointer; }
 .map-fav:hover { border-color:#d99a00; color:#7a5b00; }
 .map-fav.on { background:#e0a21a; border-color:#e0a21a; color:#fff; }
+.map-hide { position:absolute; right:7px; bottom:5px; width:16px; height:16px; border:0;
+  border-radius:50%; display:flex; align-items:center; justify-content:center; padding:0;
+  background:rgba(0,0,0,.07); color:var(--muted); font-size:.72rem; line-height:1;
+  cursor:pointer; opacity:.85; }
+.map-hide:hover { background:rgba(0,0,0,.14); color:var(--ink); opacity:1; }
 .map-missing { margin-top:12px; padding:9px 10px; border:1px solid var(--line);
   border-radius:8px; background:#faf7f2; color:var(--muted); font-size:.8rem; font-weight:700; }
 .map-missing[hidden] { display:none; }
@@ -630,6 +644,12 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
     fav.type = 'button'; fav.setAttribute('aria-pressed', 'false');
     fav.title = 'Markera som favorit'; fav.textContent = '★'; acts.appendChild(fav);
     n.appendChild(acts);
+    const hide = el('button', 'event-hide');
+    hide.type = 'button';
+    hide.title = 'Dölj event';
+    hide.setAttribute('aria-label', 'Dölj event');
+    hide.textContent = '\u00d7';
+    n.appendChild(hide);
     return n;
   }
 
@@ -821,6 +841,13 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
     return document.querySelector('.merged-guide .guide-track-inner[data-date="' + date + '"]');
   }
 
+  function clearGuidePlacement(node) {
+    node.style.left = '';
+    node.style.top = '';
+    node.style.width = '';
+    node.style.height = '';
+  }
+
   function placeGuideDay(date, nodes) {
     const track = guideTrack(date);
     if (!track) return;
@@ -880,7 +907,10 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
         byDay[date].sort((a, b) =>
           (+a.dataset.s - +b.dataset.s) || (+a.dataset.e - +b.dataset.e) ||
           (a.dataset.title < b.dataset.title ? -1 : 1));
-        byDay[date].forEach(n => list.appendChild(n));
+        byDay[date].forEach(n => {
+          clearGuidePlacement(n);
+          list.appendChild(n);
+        });
       });
     } else if (target === 'guide') {
       const byDay = {};
@@ -1055,6 +1085,15 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
   };
 
   document.addEventListener('click', ev => {
+    const hideBtn = ev.target.closest('.event-hide');
+    if (hideBtn) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const host = hideBtn.closest('.event');
+      if (host && window.MV) window.MV.requestHide(host.dataset.id);
+      return;
+    }
+
     const btn = ev.target.closest('.event-actions .act');
     if (!btn) return;
     ev.preventDefault();
@@ -1407,7 +1446,7 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
 
   document.querySelectorAll('.event').forEach(el => {
     el.addEventListener('click', ev => {
-      if (ev.target.closest('a') || ev.target.closest('.event-actions')) return;
+      if (ev.target.closest('a') || ev.target.closest('.event-actions') || ev.target.closest('.event-hide')) return;
       openFor(el);
     });
   });
@@ -1549,6 +1588,8 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
   function renderEventRow(el) {
     const row = document.createElement('div');
     row.className = 'map-event';
+    const hidden = !!(window.MV && window.MV.isHiddenEl(el));
+    row.classList.toggle('is-hidden', hidden);
     const open = document.createElement('button');
     open.type = 'button';
     open.className = 'map-event-main';
@@ -1595,9 +1636,20 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
       if (window.MV && fav.dataset.id) window.MV.toggleFav(fav.dataset.id);
     });
 
+    const hide = document.createElement('button');
+    hide.type = 'button';
+    hide.className = 'map-hide';
+    hide.title = hidden ? 'Visa eventet igen' : 'Dölj event';
+    hide.setAttribute('aria-label', hidden ? 'Visa eventet igen' : 'Dölj event');
+    hide.textContent = '\u00d7';
+    hide.addEventListener('click', () => {
+      if (window.MV && el.dataset.id) window.MV.requestHide(el.dataset.id);
+    });
+
     row.appendChild(open);
     if (ticket) row.appendChild(ticket);
     row.appendChild(fav);
+    row.appendChild(hide);
     return row;
   }
 
