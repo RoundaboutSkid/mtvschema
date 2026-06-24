@@ -7,6 +7,8 @@
 * { box-sizing:border-box; }
 body { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; margin:0;
   background:var(--bg); color:var(--ink); }
+.ticket-icon { width:1em; height:1em; display:block; fill:none; stroke:currentColor;
+  stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:0 0 auto; }
 header.top { padding:18px 24px 6px; }
 header.top h1 { margin:0 0 4px; }
 header.top p { margin:0; color:var(--muted); max-width:72ch; font-size:.92rem; }
@@ -139,10 +141,10 @@ section.day.empty { display:none; }
 .event:hover .event-actions .act { opacity:1; }
 .event-actions .act:hover { opacity:1 !important; background:rgba(0,0,0,.12); color:var(--ink); }
 .event.is-fav .act.fav { opacity:1; color:#fff; background:#e0a21a; }
-/* Biljett-emoji som indikator (tydlig biljett-ikon); grön ton när biljetten är köpt. */
-.event-actions .tixmark { opacity:1; font-size:.82rem; line-height:1; filter:saturate(1.15); }
-.event-actions .tixmark.bought { filter:hue-rotate(125deg) saturate(1.5) brightness(.95); }
-.event.short .event-actions .tixmark { font-size:.7rem; }
+.event-actions .tixmark { opacity:1; color:#8a6500; background:rgba(224,162,26,.14); }
+.event-actions .tixmark .ticket-icon { width:.9rem; height:.9rem; }
+.event-actions .tixmark.bought { color:#176b39; background:#e8f8ee; }
+.event.short .event-actions .tixmark .ticket-icon { width:.74rem; height:.74rem; }
 .event-hide { position:absolute; right:4px; bottom:3px; z-index:5; width:16px; height:16px;
   border:0; border-radius:50%; display:flex; align-items:center; justify-content:center;
   padding:0; background:rgba(0,0,0,.07); color:var(--muted); font-size:.72rem;
@@ -293,9 +295,9 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
 .map-event-org { color:var(--muted); font-size:.78rem; font-weight:600; white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis; }
 .map-ticket { grid-column:2; width:28px; height:28px; display:flex; align-items:center; justify-content:center;
-  border-radius:50%; background:rgba(0,0,0,.06); font-size:.95rem; line-height:1;
-  filter:saturate(1.15); }
-.map-ticket.bought { filter:hue-rotate(125deg) saturate(1.5) brightness(.95); }
+  border-radius:50%; background:rgba(224,162,26,.14); color:#8a6500; line-height:1; }
+.map-ticket .ticket-icon { width:18px; height:18px; }
+.map-ticket.bought { background:#e8f8ee; color:#176b39; }
 .map-fav { grid-column:3; width:32px; height:32px; border-radius:50%; border:1px solid var(--line2);
   background:#fff; color:var(--muted); font-size:1.05rem; line-height:1; cursor:pointer; }
 .map-fav:hover { border-color:#d99a00; color:#7a5b00; }
@@ -363,7 +365,7 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
   border:1px solid var(--line2); background:#fff; color:var(--ink); cursor:pointer;
   display:inline-flex; align-items:center; gap:.4em; }
 .modal .m-btn:hover { border-color:var(--header-bg); }
-.modal .m-btn svg.tix { width:1.15em; height:1.15em; fill:currentColor; }
+.modal .m-btn svg.tix { width:1.15em; height:1.15em; }
 .modal .m-btn.fav.on { background:#fff7e0; border-color:#e6b400; color:#7a5b00; }
 .modal .m-btn.bought.on { background:#e8f8ee; border-color:#37b86e; color:#1b6b3c; }
 .modal .m-btn.hide.on { background:#fdecea; border-color:#e0796f; color:#8a2b1f; }

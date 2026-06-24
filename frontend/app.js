@@ -13,6 +13,25 @@
 /* --------------------------------------------------------------------------
  * RENDER – bygg DOM från MV_DATA
  * ------------------------------------------------------------------------ */
+function mvTicketIcon(cls) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.classList.add('ticket-icon');
+  if (cls) svg.classList.add(cls);
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+
+  const outline = document.createElementNS(ns, 'path');
+  outline.setAttribute('d',
+    'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z');
+  const cuts = document.createElementNS(ns, 'path');
+  cuts.setAttribute('d', 'M13 5v2M13 17v2M13 11v2');
+  svg.appendChild(outline);
+  svg.appendChild(cuts);
+  return svg;
+}
+
 (function () {
   const DATA = (typeof window !== 'undefined' && window.MV_DATA) || {};
   window.MV_CFG = { icsEndpoint: DATA.icsEndpoint || '' };
@@ -227,12 +246,12 @@
 
     const acts = el('div', 'event-actions');
     if (ev.ticket) {
-      // Biljett-emoji = tydlig indikator att eventet kräver biljett. Köpet och
-      // "markera som köpt" sker i detaljvyn; emojin får grön ton när biljetten är köpt.
+      // Egen SVG istället för emoji, så ikonen renderas stabilt även på Windows.
       const tk = el('span', 'tixmark');
       tk.setAttribute('aria-hidden', 'true');
       tk.title = 'Det här eventet kräver biljett';
-      tk.textContent = '🎟'; acts.appendChild(tk);
+      tk.appendChild(mvTicketIcon());
+      acts.appendChild(tk);
     }
     const fav = el('button', 'act fav');
     fav.type = 'button'; fav.setAttribute('aria-pressed', 'false');
@@ -906,7 +925,9 @@
     mFav.textContent = (fav ? '\u2605' : '\u2606') + ' Favorit';
     mFav.classList.toggle('on', fav);
     mBought.hidden = !currentTicketed;
-    mBought.textContent = '🎟' + (buy ? ' Biljett k\u00f6pt' : ' Markera biljett som k\u00f6pt');
+    mBought.textContent = '';
+    mBought.appendChild(mvTicketIcon('tix'));
+    mBought.appendChild(document.createTextNode(buy ? ' Biljett k\u00f6pt' : ' Markera biljett som k\u00f6pt'));
     mBought.classList.toggle('on', buy);
     const hid = currentId ? window.MV.isHidden(currentId) : false;
     mHide.textContent = hid ? '\u21a9 Visa eventet igen' : '\u2715 D\u00f6lj event';
@@ -1241,7 +1262,7 @@
       const bought = !!(window.MV && window.MV.isBought(el.dataset.id));
       ticket.classList.toggle('bought', bought);
       ticket.title = bought ? 'Biljett köpt' : 'Det här eventet kräver biljett';
-      ticket.textContent = '\uD83C\uDF9F';
+      ticket.appendChild(mvTicketIcon());
     }
 
     const fav = document.createElement('button');
