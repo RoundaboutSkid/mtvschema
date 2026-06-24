@@ -17,8 +17,8 @@
   const DATA = (typeof window !== 'undefined' && window.MV_DATA) || {};
   window.MV_CFG = { icsEndpoint: DATA.icsEndpoint || '' };
 
-  // Fast bredd per lane -> korten får konstant bredd i tidslinje-vyerna oavsett
-  // hur många parallella spalter en plats/zon har den dagen.
+  // Fast bredd per guide-lane -> korten får konstant bredd även när många
+  // programpunkter pågår samtidigt.
   const LANE_W = 150;
 
   function el(tag, cls) {
@@ -36,10 +36,15 @@
       const a = document.createElement('a');
       a.href = '#day-' + d.date;
       a.textContent = d.label;
-      // I tidslinje-vyerna ligger dagarna i den sammanslagna tavlan (sektionerna
-      // är dolda), så hoppa genom att skrolla tavlan till dagens y-position.
+      // I programguiden ligger dagarna i den sammanslagna guideytan, så hoppa
+      // genom att skrolla den. I kartvyn väljer dagknapparna första synliga
+      // platsen för dagen.
       a.addEventListener('click', e => {
         if (document.body.dataset.view === 'flow') return;
+        if (document.body.dataset.view === 'map') {
+          if (window.MVMAP && window.MVMAP.selectDate(d.date)) e.preventDefault();
+          return;
+        }
         if (document.body.dataset.view === 'guide') {
           const sc = document.querySelector('.guide-scroll.merged-guide');
           const day = document.querySelector('.guide-day[data-date="' + d.date + '"]');
@@ -48,12 +53,6 @@
             sc.scrollTop = Math.max(0, day.offsetTop - 34);
           }
           return;
-        }
-        const geo = window.MV_GEO;
-        const sc = document.querySelector('.board-scroll.merged');
-        if (geo && sc && geo.headTop[d.date] != null) {
-          e.preventDefault();
-          sc.scrollTop = geo.headTop[d.date];
         }
       });
       nav.appendChild(a);
@@ -122,9 +121,8 @@
   // ---- Ett event-block ----------------------------------------------------
   function buildEvent(ev) {
     const n = el('div', 'event' + (ev.short ? ' short' : ''));
-    // Höjd = varaktighet. Topp/vänster/bredd sätts av VIEW.placeEvent i tidslinje-
-    // vyerna (absolut position i den sammanslagna tavlan); i flödet är kortet
-    // statiskt (CSS) så dessa ignoreras.
+    // Höjd = varaktighet. Programguiden använder egen horisontell placering,
+    // medan flödet och kartan läser samma eventdata utan tidslinjeposition.
     n.style.height = ev.height + 'px';
     n.dataset.ptop = ev.top;
     n.style.setProperty('--cat', '#' + ev.color);
@@ -141,12 +139,10 @@
     if (ev.status) n.setAttribute('data-status', ev.status);
     if (ev.ticket) n.setAttribute('data-ticket', ev.ticket);
     if (ev.desc) n.setAttribute('data-desc', ev.desc);
-    // Lane-index/spann för plats (v) och zon (z). VIEW positionerar i pixlar mot
-    // den globala kolumnbredden (laneCount × LANE_W) så korten blir dygnsoberoende.
-    n.dataset.vlane = ev.vlane != null ? ev.vlane : 0;
-    n.dataset.vspan = ev.vspan != null ? ev.vspan : 1;
-    n.dataset.zlane = ev.zlane != null ? ev.zlane : 0;
-    n.dataset.zspan = ev.zspan != null ? ev.zspan : 1;
+    if (ev.lat != null && ev.lng != null) {
+      n.setAttribute('data-lat', ev.lat);
+      n.setAttribute('data-lng', ev.lng);
+    }
     n.setAttribute('data-zone', ev.zone || 'Z?');
     n.style.setProperty('--zone', '#' + (ev.zColor || '6B7280'));
 
@@ -194,8 +190,8 @@
   }
 
   // ---- En dags flödeslista (kronologisk, mkal-stil) -----------------------
-  // Alla dagens event i en platt, tidssorterad lista. Samma event-noder används
-  // sedan i tidslinje-vyerna (VIEW.moveTo flyttar dem), så all wiring följer med.
+  // Alla dagens event i en platt, tidssorterad lista. Samma event-noder flyttas
+  // till programguiden vid behov, så all wiring följer med.
   function buildFlowList(d) {
     const list = el('div', 'flow-list');
     const items = [];
@@ -269,106 +265,45 @@
 
   // ---- En sammanslagen tavla för hela veckan ------------------------------
   // Alla dagar staplas vertikalt i EN skrollbar tavla med gemensamma (globala)
-  // plats-/zon-kolumner och en klistrad kolumnrubrik. Vänsteraxeln visar tid
-  // OCH dag. Eventen byggs i flödeslistorna och flyttas hit av VIEW.
-  const DAY_HEAD_H = 30;   // höjd på dagrubrik-bandet i varje dagblock
-  const MERGED_PAD = 10;   // luft över/under hela tavlan
+  function buildMapView() {
+    const shell = el('section', 'map-view');
+    shell.id = 'mv-map-view';
 
-  // Lägg dagblocken efter varandra och ge varje datum sin y-position. evTop är
-  // dagens tidslinje-start (px); headTop är dagrubrikens topp.
-  function computeDayGeometry() {
-    const geo = { headTop: {}, evTop: {}, total: 0, laneW: LANE_W };
-    let y = MERGED_PAD;
-    (DATA.days || []).forEach(d => {
-      geo.headTop[d.date] = y;
-      geo.evTop[d.date] = y + DAY_HEAD_H;
-      y += DAY_HEAD_H + d.trackH;
-    });
-    geo.total = y + MERGED_PAD;
-    return geo;
-  }
+    const layout = el('div', 'map-layout');
+    const canvas = el('div', 'map-canvas');
+    canvas.id = 'mv-map';
+    canvas.setAttribute('aria-label', 'Karta');
 
-  function buildMergedBoard() {
-    const geo = computeDayGeometry();
-    window.MV_GEO = geo;                 // delas med VIEW (positionering) och nav (hopp)
-    const total = geo.total;
-    const scroll = el('div', 'board-scroll merged');
-    const board = el('div', 'board merged');
+    const panel = el('aside', 'map-panel');
+    const head = el('div', 'map-panel-head');
+    const h2 = document.createElement('h2');
+    h2.id = 'map-title';
+    h2.textContent = 'Karta';
+    const count = el('div', 'map-count');
+    count.id = 'map-count';
+    head.appendChild(h2);
+    head.appendChild(count);
 
-    // Bakgrundslager (bakom kolumnerna): per dag ett rubrikband + timrutnät.
-    const grid = el('div', 'grid-layer'); grid.style.height = total + 'px';
-    (DATA.days || []).forEach(d => {
-      const strip = el('div', 'day-strip');
-      strip.style.top = geo.headTop[d.date] + 'px';
-      strip.style.height = DAY_HEAD_H + 'px';
-      grid.appendChild(strip);
-      const g = el('div', 'day-grid');
-      g.style.top = geo.evTop[d.date] + 'px';
-      g.style.height = d.trackH + 'px';
-      g.style.backgroundSize = '100% ' + d.slotPx + 'px';
-      grid.appendChild(g);
-    });
-    board.appendChild(grid);
+    const places = el('div', 'map-places');
+    places.id = 'map-places';
+    const list = el('div', 'map-list');
+    list.id = 'map-list';
+    const missing = el('div', 'map-missing');
+    missing.id = 'map-missing';
 
-    // Vänsteraxel (klistrad): per dag ett dag-namn följt av tidsstreck.
-    const axis = el('div', 'axis-col');
-    const ah = el('div', 'axis-head'); ah.textContent = 'Tid'; axis.appendChild(ah);
-    const ab = el('div', 'axis-body');
-    const ai = el('div', 'axis-inner-m'); ai.style.height = total + 'px';
-    (DATA.days || []).forEach(d => {
-      const dl = el('div', 'day-label'); dl.id = 'mday-' + d.date;
-      dl.style.top = geo.headTop[d.date] + 'px'; dl.style.height = DAY_HEAD_H + 'px';
-      const parts = (d.label || '').split(' ');
-      const wd = el('span', 'dl-wd'); wd.textContent = parts[0] || d.label;
-      const dt = el('span', 'dl-dt'); dt.textContent = parts.slice(1).join(' ');
-      dl.appendChild(wd); if (dt.textContent) dl.appendChild(dt);
-      ai.appendChild(dl);
-      (d.ticks || []).forEach(tk => {
-        const t = el('div', 'tick' + (tk.hour ? ' hour' : ''));
-        t.style.top = (geo.evTop[d.date] + tk.top) + 'px'; t.textContent = tk.label;
-        ai.appendChild(t);
-      });
-    });
-    ab.appendChild(ai); axis.appendChild(ab); board.appendChild(axis);
-
-    // Globala plats-kolumner (en per plats, bredd = veckans max laneCount × LANE_W).
-    (DATA.venueCols || []).forEach(v => {
-      const col = el('div', 'venue-col');
-      col.setAttribute('data-venue', v.venue);
-      col.style.width = (v.laneCount * LANE_W) + 'px';
-      const vh = el('div', 'venue-head'); vh.title = v.venue;
-      const ic = el('span', 'vh-icon'); ic.textContent = v.icon || '\uD83D\uDCCD';
-      const nm = el('span', 'vh-name'); nm.textContent = v.venue;
-      vh.appendChild(ic); vh.appendChild(document.createTextNode(' ')); vh.appendChild(nm);
-      col.appendChild(vh);
-      const track = el('div', 'track');
-      const ti = el('div', 'track-inner-m'); ti.style.height = total + 'px';
-      track.appendChild(ti); col.appendChild(track); board.appendChild(col);
-    });
-
-    // Globala zon-kolumner (en per zon).
-    (DATA.zoneCols || []).forEach(z => {
-      const col = el('div', 'zone-col');
-      col.setAttribute('data-zone', z.id);
-      col.style.width = (z.laneCount * LANE_W) + 'px';
-      const zh = el('div', 'zone-head'); zh.style.background = '#' + z.color; zh.title = z.label;
-      const nm = el('span', 'zname'); nm.textContent = z.label; zh.appendChild(nm);
-      if (z.icons && z.icons.length) {
-        const ic = el('span', 'zicons'); ic.textContent = z.icons.join(''); zh.appendChild(ic);
-      }
-      col.appendChild(zh);
-      const track = el('div', 'track');
-      const ti = el('div', 'track-inner-m'); ti.style.height = total + 'px';
-      track.appendChild(ti); col.appendChild(track); board.appendChild(col);
-    });
-
-    scroll.appendChild(board);
-    return scroll;
+    panel.appendChild(head);
+    panel.appendChild(places);
+    panel.appendChild(list);
+    panel.appendChild(missing);
+    layout.appendChild(canvas);
+    layout.appendChild(panel);
+    shell.appendChild(layout);
+    return shell;
   }
 
   // ---- Alla dagar ---------------------------------------------------------
-  // Varje dag får en sektion med sin flödeslista (Flöde-vyn). Tidslinje-vyerna
-  // använder i stället EN sammanslagen tavla som läggs sist i #mv-days.
+  // Varje dag får en sektion med sin flödeslista (Flöde-vyn). Programguiden och
+  // kartan läggs sist och visas bara när respektive vy är aktiv.
   function renderDays() {
     const main = document.getElementById('mv-days');
     if (!main) return;
@@ -381,7 +316,7 @@
       main.appendChild(sec);
     });
     main.appendChild(buildMergedGuideBoard());
-    main.appendChild(buildMergedBoard());
+    main.appendChild(buildMapView());
   }
 
   renderNav();
@@ -391,19 +326,18 @@
 
 
 /* --------------------------------------------------------------------------
- * VIEW – vy-växlare (Flöde / Programguide / Zon-band / Alla platser)
+ * VIEW – vy-växlare (Flöde / Programguide / Karta)
  *
- * Läget sparas i localStorage och speglas i body[data-view]. Varje vy har sin
- * egen uppsättning kolumner i tavlan; moveTo() flyttar (inte återskapar) event-
- * noderna till rätt kolumntyp så all befintlig wiring följer med oförändrad.
+ * Läget sparas i localStorage och speglas i body[data-view]. Flöde och
+ * programguide flyttar samma eventnoder mellan listor/rader så all befintlig
+ * wiring följer med oförändrad; kartan läser eventnoderna utan att flytta dem.
  * ------------------------------------------------------------------------ */
 (function () {
   const VIEW_KEY = 'mv_view_v1';
   const VIEWS = [
     { id: 'flow',   icon: '\uD83D\uDCC5', label: 'Flöde' },
     { id: 'guide',  icon: '\uD83D\uDDBC\uFE0F', label: 'Programguide' },
-    { id: 'zones',  icon: '\uD83E\uDDED', label: 'Zon-band' },
-    { id: 'places', icon: '\uD83D\uDDC2\uFE0F', label: 'Alla platser' },
+    { id: 'map',    icon: '\uD83D\uDDFA\uFE0F', label: 'Karta' },
   ];
   const ids = VIEWS.map(v => v.id);
   const bar = document.getElementById('mv-viewbar');
@@ -419,37 +353,25 @@
     if (bar) bar.querySelectorAll('.vbtn').forEach(b =>
       b.setAttribute('aria-pressed', b.dataset.view === mode ? 'true' : 'false'));
     moveTo(mode);
+    if (mode === 'map' && window.MVMAP) window.MVMAP.activate();
   }
 
-  // Flytta (inte återskapa) event-noderna mellan plats-, zon- och alla-platser-
-  // kolumner så att all befintlig wiring (favoriter, modal, filter) följer med.
+  function show(target) {
+    if (ids.indexOf(target) === -1) return false;
+    if (mode !== target) {
+      mode = target;
+      store(mode);
+      applyMode();
+    } else if (mode === 'map' && window.MVMAP) {
+      window.MVMAP.activate();
+    }
+    return true;
+  }
+
+  // Flytta (inte återskapa) event-noderna mellan flöde och programguide.
   let placed = 'flow';
   const GUIDE_ROW_H = 78;
   const GUIDE_MIN_W = 150;
-
-  function placeEvent(node, target) {
-    if (target === 'flow' || target === 'guide') return;   // listrader/guide sköts separat
-    const zone = target === 'zones';
-    const lane = +(zone ? node.dataset.zlane : node.dataset.vlane) || 0;
-    const span = +(zone ? node.dataset.zspan : node.dataset.vspan) || 1;
-    const geo = window.MV_GEO || {};
-    const laneW = geo.laneW || 150;
-    node.style.left = (lane * laneW) + 'px';
-    node.style.width = 'calc(' + (span * laneW) + 'px - 3px)';
-    const base = (geo.evTop && geo.evTop[node.dataset.date]) || 0;
-    node.style.top = (base + (+node.dataset.ptop || 0)) + 'px';
-  }
-  function destFor(target, node) {
-    if (target === 'flow') {
-      const sec = document.getElementById('day-' + node.dataset.date);
-      return sec ? sec.querySelector('.flow-list') : null;
-    }
-    if (target === 'zones')
-      return document.querySelector('.board.merged .zone-col[data-zone="' +
-        (node.dataset.zone || 'Z?') + '"] .track-inner-m');
-    return document.querySelector('.board.merged .venue-col[data-venue="' +
-      node.dataset.venue + '"] .track-inner-m');
-  }
 
   function guideTrack(date) {
     return document.querySelector('.merged-guide .guide-track-inner[data-date="' + date + '"]');
@@ -497,6 +419,10 @@
   }
 
   function moveTo(target) {
+    if (target === 'map') {
+      if (window.MVFILTER) window.MVFILTER.apply();
+      return;
+    }
     if (placed === target) return;
     const nodes = Array.prototype.slice.call(document.querySelectorAll('.event'));
     if (target === 'flow') {
@@ -510,7 +436,7 @@
         byDay[date].sort((a, b) =>
           (+a.dataset.s - +b.dataset.s) || (+a.dataset.e - +b.dataset.e) ||
           (a.dataset.title < b.dataset.title ? -1 : 1));
-        byDay[date].forEach(n => { list.appendChild(n); placeEvent(n, target); });
+        byDay[date].forEach(n => list.appendChild(n));
       });
     } else if (target === 'guide') {
       const byDay = {};
@@ -523,11 +449,6 @@
           (a.dataset.title < b.dataset.title ? -1 : 1));
         byDay[date].forEach(n => track.appendChild(n));
         placeGuideDay(date, byDay[date]);
-      });
-    } else {
-      nodes.forEach(node => {
-        const dest = destFor(target, node);
-        if (dest) { dest.appendChild(node); placeEvent(node, target); }
       });
     }
     placed = target;
@@ -548,8 +469,7 @@
       b.dataset.view = v.id;
       b.innerHTML = "<span aria-hidden='true'>" + v.icon + '</span> ' + v.label;
       b.addEventListener('click', () => {
-        if (mode === v.id) return;
-        mode = v.id; store(mode); applyMode();
+        show(v.id);
       });
       sw.appendChild(b);
     });
@@ -558,7 +478,7 @@
 
   render();
   applyMode();
-  window.MVVIEW = { reflowGuide: reflowGuide };
+  window.MVVIEW = { reflowGuide: reflowGuide, show: show };
 })();
 
 
@@ -787,20 +707,8 @@
     }
     if (hiddenCountEl) hiddenCountEl.textContent = hiddenTotal;
     if (unhideAll) unhideAll.style.display = hiddenTotal ? '' : 'none';
-    // Hide zone columns with no visible events (zon-band-vyn).
-    document.querySelectorAll('.zone-col').forEach(col => {
-      const hasVisible = col.querySelector('.event:not(.hidden)') !== null;
-      col.classList.toggle('hidden', !hasVisible);
-    });
-    // Alla platser-vyn: dölj plats-kolumner som är bortfiltrerade ELLER saknar
-    // synligt program (t.ex. i "Bara favoriter") så vyn anpassar sig till urvalet.
-    document.querySelectorAll('.venue-col').forEach(col => {
-      const venueOn = activeVenues.has(col.dataset.venue);
-      const hasVisible = venueOn && col.querySelector('.event:not(.hidden)') !== null;
-      col.classList.toggle('hidden', !hasVisible);
-    });
     // Dölj tomma dagar: räkna synliga event per datum globalt (noderna kan ligga
-    // i flödeslistor ELLER i den sammanslagna tavlan beroende på vy).
+    // i flödeslistor eller programguiden beroende på vy).
     const seenDate = {};
     for (const el of events) if (!el.classList.contains('hidden')) seenDate[el.dataset.date] = true;
     document.querySelectorAll('section.day').forEach(day => {
@@ -813,6 +721,7 @@
       if (gday) gday.classList.toggle('hidden', !any);
     });
     if (window.MVVIEW) window.MVVIEW.reflowGuide();
+    if (window.MVMAP) window.MVMAP.refresh();
     countEl.textContent = 'Visar ' + visible + ' av ' + total + ' programpunkter';
   }
 
@@ -881,12 +790,16 @@
   const mMeta = document.getElementById('m-meta');
   const mBadges = document.getElementById('m-badges');
   const mDesc = document.getElementById('m-desc');
+  const mMapLinks = document.getElementById('m-maplinks');
+  const mMap = document.getElementById('m-map');
+  const mDirections = document.getElementById('m-directions');
   const mOccurrences = document.getElementById('m-occurrences');
   const mTicket = document.getElementById('m-ticket');
   const mFav = document.getElementById('m-fav');
   const mBought = document.getElementById('m-bought');
   const mHide = document.getElementById('m-hide');
   let currentId = null, currentTicketed = false, currentTitle = '';
+  let currentMapEvent = null;
 
   function addBadge(text, color, href) {
     const b = document.createElement(href ? 'a' : 'span');
@@ -1026,6 +939,19 @@
       mDesc.appendChild(p);
     }
 
+    const lat = el.dataset.lat;
+    const lng = el.dataset.lng;
+    if (mMapLinks && mMap && mDirections && lat && lng) {
+      const coords = encodeURIComponent(lat + ',' + lng);
+      currentMapEvent = el;
+      mDirections.href = 'https://www.google.com/maps/dir/?api=1&destination=' + coords;
+      mMapLinks.hidden = false;
+    } else if (mMapLinks) {
+      currentMapEvent = null;
+      if (mDirections) mDirections.removeAttribute('href');
+      mMapLinks.hidden = true;
+    }
+
     if (el.dataset.ticket) { mTicket.href = el.dataset.ticket; mTicket.hidden = false; }
     else { mTicket.removeAttribute('href'); mTicket.hidden = true; }
 
@@ -1044,6 +970,12 @@
   modal.addEventListener('click', ev => { if (ev.target === modal) close(); });
   document.getElementById('m-close').addEventListener('click', close);
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !modal.hidden) close(); });
+  if (mMap) mMap.addEventListener('click', () => {
+    if (!currentMapEvent) return;
+    if (window.MVVIEW) window.MVVIEW.show('map');
+    if (window.MVMAP) window.MVMAP.selectEvent(currentMapEvent);
+    close();
+  });
   mFav.addEventListener('click', () => { if (window.MV && currentId) window.MV.toggleFav(currentId); });
   mBought.addEventListener('click', () => { if (window.MV && currentId) window.MV.toggleBought(currentId); });
   mHide.addEventListener('click', () => {
@@ -1051,6 +983,256 @@
     window.MV.requestHide(currentId, { onHidden: close });
   });
   if (window.MV) window.MV.onChange(refreshActions);
+  window.MVMODAL = { open: openFor, close: close };
+})();
+
+
+/* --------------------------------------------------------------------------
+ * MAP – kartvy med synliga, koordinatsatta platser
+ * ------------------------------------------------------------------------ */
+(function () {
+  const shell = document.getElementById('mv-map-view');
+  if (!shell) return;
+  const canvas = document.getElementById('mv-map');
+  const titleEl = document.getElementById('map-title');
+  const countEl = document.getElementById('map-count');
+  const placesEl = document.getElementById('map-places');
+  const listEl = document.getElementById('map-list');
+  const missingEl = document.getElementById('map-missing');
+  let map = null, layer = null, selectedKey = '', groups = [], missingCount = 0;
+  const SELECT_ZOOM = 16;
+
+  function dayTitle(date) {
+    const sec = document.getElementById('day-' + date);
+    const h = sec ? sec.querySelector('h2') : null;
+    return h ? h.textContent.trim() : date;
+  }
+
+  function eventSort(a, b) {
+    return (a.dataset.date || '').localeCompare(b.dataset.date || '') ||
+      (+a.dataset.s - +b.dataset.s) ||
+      (a.dataset.title || '').localeCompare(b.dataset.title || '', 'sv');
+  }
+
+  function collectGroups() {
+    const byKey = {};
+    let missing = 0;
+    document.querySelectorAll('.event').forEach(el => {
+      if (el.classList.contains('hidden')) return;
+      const lat = Number(el.dataset.lat);
+      const lng = Number(el.dataset.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        missing++;
+        return;
+      }
+      const key = el.dataset.venue + '|' + lat + ',' + lng;
+      const g = byKey[key] || (byKey[key] = {
+        key: key, venue: el.dataset.venue || 'Okänd plats',
+        lat: lat, lng: lng, events: [],
+      });
+      g.events.push(el);
+    });
+    const out = Object.values(byKey);
+    out.forEach(g => g.events.sort(eventSort));
+    out.sort((a, b) =>
+      a.venue.localeCompare(b.venue, 'sv') ||
+      eventSort(a.events[0], b.events[0]));
+    missingCount = missing;
+    return out;
+  }
+
+  function ensureMap() {
+    if (map) return true;
+    if (!canvas) return false;
+    if (!window.L) {
+      canvas.innerHTML = "<div class='map-fallback'>Kartan kunde inte laddas.</div>";
+      return false;
+    }
+    map = L.map(canvas, { zoomControl: true, scrollWheelZoom: true })
+      .setView([57.6425, 18.2965], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap',
+    }).addTo(map);
+    layer = L.layerGroup().addTo(map);
+    return true;
+  }
+
+  function markerIcon(g, active) {
+    return L.divIcon({
+      className: 'mv-marker' + (active ? ' active' : ''),
+      html: '<span>' + g.events.length + '</span>',
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
+      popupAnchor: [0, -18],
+    });
+  }
+
+  function renderMarkers(fit) {
+    if (!map || !layer) return;
+    layer.clearLayers();
+    const bounds = [];
+    groups.forEach(g => {
+      const marker = L.marker([g.lat, g.lng], {
+        icon: markerIcon(g, g.key === selectedKey),
+        title: g.venue,
+      }).addTo(layer);
+      const tip = document.createElement('span');
+      tip.textContent = g.venue + ' (' + g.events.length + ')';
+      marker.bindTooltip(tip);
+      marker.on('click', () => select(g.key, true));
+      bounds.push([g.lat, g.lng]);
+    });
+    if (fit && bounds.length) {
+      map.fitBounds(bounds, { padding: [26, 26], maxZoom: 15 });
+    }
+  }
+
+  function renderPlaces() {
+    if (!placesEl) return;
+    placesEl.textContent = '';
+    groups.forEach(g => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'map-place';
+      btn.classList.toggle('active', g.key === selectedKey);
+      btn.textContent = g.venue + ' (' + g.events.length + ')';
+      btn.addEventListener('click', () => select(g.key, true));
+      placesEl.appendChild(btn);
+    });
+  }
+
+  function renderEventRow(el) {
+    const row = document.createElement('div');
+    row.className = 'map-event';
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'map-event-main';
+    open.addEventListener('click', () => {
+      if (window.MVMODAL) window.MVMODAL.open(el);
+    });
+
+    const when = document.createElement('span');
+    when.className = 'map-event-when';
+    when.textContent = dayTitle(el.dataset.date || '') + ' · ' + (el.dataset.time || '');
+    const title = document.createElement('span');
+    title.className = 'map-event-title';
+    title.textContent = el.dataset.title || '';
+    const org = document.createElement('span');
+    org.className = 'map-event-org';
+    org.textContent = el.dataset.org || '';
+
+    open.appendChild(when);
+    open.appendChild(title);
+    if (org.textContent) open.appendChild(org);
+
+    const fav = document.createElement('button');
+    fav.type = 'button';
+    fav.className = 'map-fav';
+    fav.dataset.id = el.dataset.id || '';
+    const on = !!(window.MV && window.MV.isFav(fav.dataset.id));
+    fav.classList.toggle('on', on);
+    fav.setAttribute('aria-pressed', on ? 'true' : 'false');
+    fav.textContent = on ? '\u2605' : '\u2606';
+    fav.title = on ? 'Ta bort favorit' : 'Markera som favorit';
+    fav.addEventListener('click', () => {
+      if (window.MV && fav.dataset.id) window.MV.toggleFav(fav.dataset.id);
+    });
+
+    row.appendChild(open);
+    row.appendChild(fav);
+    return row;
+  }
+
+  function renderPanel() {
+    const selected = groups.find(g => g.key === selectedKey);
+    const total = groups.reduce((sum, g) => sum + g.events.length, 0);
+    if (titleEl) titleEl.textContent = selected ? selected.venue : 'Karta';
+    if (countEl) {
+      countEl.textContent = groups.length
+        ? groups.length + ' platser · ' + total + ' programpunkter'
+        : 'Inga programpunkter';
+    }
+    if (listEl) {
+      listEl.textContent = '';
+      if (selected) selected.events.forEach(el => listEl.appendChild(renderEventRow(el)));
+      else {
+        const empty = document.createElement('div');
+        empty.className = 'map-empty';
+        empty.textContent = 'Inga synliga programpunkter med kartposition.';
+        listEl.appendChild(empty);
+      }
+    }
+    if (missingEl) {
+      missingEl.hidden = missingCount === 0;
+      missingEl.textContent = missingCount
+        ? missingCount + (missingCount === 1 ? ' synlig programpunkt saknar kartposition.' :
+          ' synliga programpunkter saknar kartposition.')
+        : '';
+    }
+    renderPlaces();
+  }
+
+  function select(key, pan) {
+    if (!groups.some(g => g.key === key)) return false;
+    selectedKey = key;
+    renderPanel();
+    renderMarkers(false);
+    const selected = groups.find(g => g.key === selectedKey);
+    if (pan && map && selected) {
+      const zoom = Math.max(map.getZoom() || SELECT_ZOOM, SELECT_ZOOM);
+      map.setView([selected.lat, selected.lng], zoom, { animate: true });
+    }
+    return true;
+  }
+
+  function refresh(opts) {
+    opts = opts || {};
+    groups = collectGroups();
+    if (!groups.some(g => g.key === selectedKey)) selectedKey = groups[0] ? groups[0].key : '';
+    renderPanel();
+    if (document.body.dataset.view === 'map') ensureMap();
+    renderMarkers(opts.fit !== false);
+  }
+
+  function activate() {
+    if (!ensureMap()) {
+      refresh({ fit: false });
+      return;
+    }
+    refresh({ fit: true });
+    setTimeout(() => {
+      if (map) {
+        map.invalidateSize();
+        renderMarkers(true);
+      }
+    }, 60);
+  }
+
+  function selectDate(date) {
+    if (!groups.length) refresh({ fit: false });
+    const g = groups.find(group => group.events.some(el => el.dataset.date === date));
+    return g ? select(g.key, true) : false;
+  }
+
+  function selectEvent(el) {
+    if (!el) return false;
+    const lat = Number(el.dataset.lat);
+    const lng = Number(el.dataset.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+    const key = (el.dataset.venue || 'Okänd plats') + '|' + lat + ',' + lng;
+    refresh({ fit: false });
+    return select(key, true);
+  }
+
+  if (window.MV) window.MV.onChange(() => refresh({ fit: false }));
+  window.MVMAP = {
+    activate: activate,
+    refresh: refresh,
+    selectDate: selectDate,
+    selectEvent: selectEvent,
+  };
+  refresh({ fit: false });
 })();
 
 
@@ -1073,7 +1255,7 @@
   }
 
   function collect() {
-    // Event-noderna kan ligga i flödeslistor eller den sammanslagna tavlan, så
+    // Event-noderna kan ligga i flödeslistor eller programguiden, så
     // samla globalt och gruppera per datum (oberoende av aktiv vy).
     const byDate = {};
     document.querySelectorAll('.event').forEach(el => {

@@ -21,7 +21,7 @@ och läs/skriv-hjälpare. Den körs inte direkt.
 - `medeltidsveckan_inofficial.json` / `.csv` – det inofficiella programmet
   (skapas av `fetch_inofficial.py`), slås automatiskt ihop vid bygget.
 - `medeltidsveckan_schema.html` – interaktivt schema med tre vyer (flöde,
-  zon-band och alla platser).
+  programguide och karta).
 - `medeltidsveckan_schema.xlsx` – samma layout som Excel, en flik per dag.
 
 ## Installation
@@ -101,9 +101,9 @@ titel matchas exakt). Kör sedan `python build_schedule.py` igen – datafilen r
 inte. Du kan också ge titlar direkt på kommandoraden med `--exclude`.
 
 
-## Fyra vyer
+## Tre vyer
 
-Högst upp i schemat finns en **vy-växlare** med fyra sätt att läsa programmet.
+Högst upp i schemat finns en **vy-växlare** med tre sätt att läsa programmet.
 Valet sparas i webbläsaren så att schemat öppnas i samma vy nästa gång.
 
 - **📅 Flöde** – en lugn, kronologisk lista per dag (en rad per programpunkt med
@@ -112,21 +112,9 @@ Valet sparas i webbläsaren så att schemat öppnas i samma vy nästa gång.
   dagarna ligger staplade i samma skroll. Samtidiga programpunkter packas i
   dynamiska rader, så du kan läsa kronologiskt och se krockar/varaktighet utan
   fasta, tomma platskolumner.
-- **🧭 Zon-band** – en tidslinje där programpunkterna grupperas i **zoner**
-  (områden i Visby) i stället för enskilda platser. Varje kort visar sin plats
-  med ikon.
-- **🗂️ Alla platser** – en tidslinje med **en kolumn per plats**, för dig som
-  vill se exakt vad som händer var.
-
-Zon-band och Alla platser ritas som **en enda sammanhållen tavla** där alla
-dagar ligger staplade i samma lodräta scroll:
-
-- **Plats-/zonrubrikerna** högst upp ligger kvar (sticky) medan du scrollar.
-- **Vänsteraxeln** visar både **veckodag/datum** och **klockslag**, så du alltid
-  ser var i veckan du befinner dig. Varje ny dag inleds med ett tydligt dagband.
-- **Dag-knapparna** högst upp hoppar till rätt dag genom att scrolla tavlan dit.
-- Korten har **konstant bredd** oavsett hur många parallella spår en plats/zon
-  har, så layouten känns lugn och förutsägbar.
+- **🗺️ Karta** – visar synliga programpunkter på karta, grupperade per plats.
+  Markörer och sidolista följer samma sök-, kategori-, plats- och favoritfilter.
+  Kartan använder Leaflet/OpenStreetMap och behöver nätanslutning för karttiles.
 
 ## Platser, zoner och ikoner
 
@@ -134,9 +122,11 @@ Vilken **zon** och vilken **ikon** varje plats får styrs av den redigerbara
 tabellen [`medeltidsveckan_venues.json`](medeltidsveckan_venues.json):
 
 - **`typer`** – en ikon (emoji) per platstyp, t.ex. `scen` 🎭, `kyrka` ⛪ eller
-  `torg` ⛲. Ikonen visas på korten (flödet) och i platsrubrikerna.
-- **`zoner`** – zonernas id (`Z1`–`Z5`) och namn. Zon-band-vyn grupperar och
-  färgar programmet efter dessa.
+  `torg` ⛲. Ikonen visas på korten och i platslistor.
+- **`zoner`** – zonernas id (`Z1`–`Z5`) och namn. Zonen används som färgaccent
+  på eventkort.
+- **`koordinater`** – latitud/longitud för kartvy. Exakta platsnamn matchas
+  direkt och tydliga namnvarianter kopplas via `alias`.
 - **`platser`** – kopplar varje plats till en `typ` (för ikonen) och en `zon`
   (samt en valfri kart`punkt` 1–27 för en framtida kartvy).
 
@@ -144,6 +134,9 @@ tabellen [`medeltidsveckan_venues.json`](medeltidsveckan_venues.json):
 plats i filen får den en standardikon (📍) och hamnar i *Övrigt*; en notis skrivs
 ut när du bygger schemat så att du ser vilka platser som behöver fyllas i. Kör
 `python build_schedule.py` igen efter ändringar.
+
+Koordinaterna följer med i den genererade `window.MV_DATA` som `lat`/`lng` på
+platsmetadata och på event där platsen kan placeras på karta.
 
 ## Sök och filtrera i schemat
 
@@ -239,22 +232,19 @@ särskilt smidigt för den som bara öppnar en färdig HTML-fil och inte kör
 skripten själv. Att dölja ett event rör inte dina favoriter eller exporter; det
 är enbart en vy-inställning.
 
-## Så fungerar tidslinjen
+## Så fungerar programguiden
 
-I **Zon-band** och **Alla platser** ritas tiden nedåt och platserna/zonerna som
-kolumner – och alla dagar ligger i **en enda sammanhållen tavla** som du
-scrollar lodrätt.
+I **Programguide** löper tiden vågrätt och varje dag ligger som ett eget band i
+en sammanhållen veckovy. Samtidiga programpunkter packas i rader, och kortets
+bredd följer varaktigheten med en minsta bredd så att även korta punkter går att
+läsa.
 
-- En programpunkt som sträcker sig över flera tidsrutor visas som **ett
-  sammanhängande block** (höjden följer längden) istället för att upprepas.
-- Programpunkter som **krockar i tid på samma plats/zon** delas upp i sidoställda
-  *lanes* så att de syns bredvid varandra. Korten har **konstant bredd** oavsett
-  antal lanes.
-- **Plats-/zonrubrikerna** ligger kvar högst upp och **vänsteraxeln** visar både
-  **dag och klockslag** medan du scrollar. Varje ny dag inleds med ett dagband.
-- **Filter döljer kolumner** som blir tomma (t.ex. *Bara favoriter*), så tavlan
-  smalnar av till ditt urval. Tavlans höjd styrs av `--board-max-h` i CSS:en, och
-  scrollar du förbi en dags slut fortsätter du rakt in i nästa dag.
+- Programpunkter som börjar samtidigt syns bredvid varandra i stället för att
+  hamna efter varandra i en lista.
+- Långa programpunkter blir bredare, så det går att se ungefär vilka event som
+  överlappar.
+- Sök, kategori-, plats- och favoritfilter påverkar både programguiden och
+  kartan.
 
 ## Var data kommer ifrån
 

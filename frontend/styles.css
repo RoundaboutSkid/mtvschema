@@ -56,49 +56,6 @@ section.day { padding:16px 24px 34px; }
 section.day h2 { margin:0 0 10px; text-transform:capitalize; }
 section.day.empty { display:none; }
 
-.board-scroll { overflow:auto; max-height:var(--board-max-h); min-height:160px;
-  border:1px solid var(--line); border-radius:10px; background:#fff; }
-.board { display:flex; align-items:stretch; min-width:max-content; }
-.axis-col { position:sticky; left:0; z-index:12; flex:0 0 var(--axis-w); background:#fff;
-  border-right:1px solid var(--line); }
-.axis-head { height:var(--head-h); position:sticky; top:0; z-index:13; background:var(--header-bg);
-  color:#fff; font-weight:700; display:flex; align-items:center; justify-content:center; }
-.axis-body { position:relative; overflow:hidden; }
-.tick { position:absolute; right:6px; transform:translateY(-50%); font-size:.7rem;
-  font-weight:700; color:var(--muted); white-space:nowrap; }
-.tick.hour { color:var(--ink); }
-
-.venue-col { flex:0 0 auto; display:flex; flex-direction:column;
-  border-right:1px solid var(--line); }
-.venue-col.hidden { display:none; }
-.venue-head .vh-icon { flex:0 0 auto; }
-.venue-head .vh-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.venue-head { height:var(--head-h); position:sticky; top:0; z-index:8; background:var(--header-bg);
-  color:#fff; font-weight:700; font-size:.82rem; line-height:1.1; text-align:center;
-  display:flex; align-items:center; justify-content:center; padding:4px 8px; overflow:hidden;
-  border-left:1px solid rgba(255,255,255,.16); }
-.track { position:relative; flex:1 0 auto; overflow:hidden; }
-
-/* Sammanslagen tavla: alla dagar i EN skroll. Kolumnerna lyfts över bakgrunds-
-   lagret (grid-layer) som ritar dagband + timrutnät i hela tavlans bredd. */
-.board.merged { position:relative; }
-.board.merged .venue-col,
-.board.merged .zone-col { position:relative; z-index:1; }
-.grid-layer { position:absolute; top:var(--head-h); left:0; width:100%; z-index:0;
-  pointer-events:none; }
-.day-strip { position:absolute; left:0; width:100%; background:#efe6d4;
-  border-top:2px solid var(--line2); border-bottom:1px solid var(--line2); }
-.day-grid { position:absolute; left:0; width:100%; background-repeat:repeat-y;
-  background-image:linear-gradient(to bottom, var(--line) 0, var(--line) 1px, transparent 1px); }
-.axis-inner-m { position:relative; }
-.track-inner-m { position:absolute; top:0; left:0; right:0; }
-.day-label { position:absolute; left:0; right:0; display:flex; flex-direction:column;
-  align-items:center; justify-content:center; line-height:1.05; padding:0 2px;
-  background:#efe6d4; border-top:2px solid var(--line2); border-bottom:1px solid var(--line2);
-  overflow:hidden; z-index:1; }
-.day-label .dl-wd { font-size:.7rem; font-weight:800; color:var(--ink); text-transform:capitalize; }
-.day-label .dl-dt { font-size:.62rem; font-weight:700; color:var(--muted); }
-
 .event { position:absolute; overflow:hidden; border-radius:7px; color:var(--ink);
   background:#fff; border:1px solid var(--line); border-left:4px solid var(--cat,#bbb);
   padding:3px 8px; font-size:.75rem; line-height:1.18; box-shadow:0 1px 2px rgba(0,0,0,.10);
@@ -132,41 +89,15 @@ section.day.empty { display:none; }
 /* Röd vänsterkant: favoritmarkerat biljett-event som inte är köpt. Måste vinna
    över vy-specifika kantfärger (flöde --zone, zon/plats border-color). */
 body[data-view="flow"] .event.needs-ticket,
-body[data-view="guide"] .event.needs-ticket,
-body[data-view="zones"] .event.needs-ticket,
-body[data-view="places"] .event.needs-ticket { border-left-color:#e11d2a; border-left-width:5px; }
+body[data-view="guide"] .event.needs-ticket { border-left-color:#e11d2a; border-left-width:5px; }
 .event.short .event-actions > * { width:15px; height:15px; font-size:.62rem; }
 .event.short { padding:1px 8px; }
 .event.short .org, .event.short .meta, .event.short .ev-place { display:none; }
 .event.short .ttl { font-size:.7rem; }
 .nohits { padding:14px 4px; color:var(--muted); font-style:italic; }
 
-/* Zon-band-vy: zonerna ersätter platskolumnerna; varje kort visar sin plats. */
-.zone-col { flex:0 0 auto; display:flex; flex-direction:column; border-right:2px solid var(--line2); }
-.zone-col.hidden { display:none; }
-.zone-head { height:var(--head-h); position:sticky; top:0; z-index:8; color:#fff; font-weight:700;
-  font-size:.82rem; line-height:1.12; display:flex; align-items:center; justify-content:center;
-  gap:7px; padding:4px 10px; overflow:hidden; text-align:center;
-  border-left:1px solid rgba(255,255,255,.16); }
-.zone-head .zname { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.zone-head .zicons { font-size:.95rem; letter-spacing:1px; flex:0 0 auto; }
 .ev-place { display:none; }
-body[data-view="zones"] .ev-place { display:block; font-size:.64rem; font-weight:600; color:var(--muted);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
-body[data-view="zones"] .event.short .ev-place { display:none; }
-/* Visa exakt en kolumntyp per vy: Flöde = lista, Zon-band = zon-kolumner,
-   Alla platser = plats-(venue-)kolumner. */
-body[data-view="flow"] .venue-col,
-body[data-view="flow"] .zone-col,
-body[data-view="zones"] .venue-col,
-body[data-view="places"] .zone-col { display:none; }
-
-/* En sammanslagen tavla för tidslinje-vyerna; i Flöde visas dagssektionerna. */
-.board-scroll.merged { display:none; margin:16px 24px 34px; }
-body[data-view="zones"] .board-scroll.merged,
-body[data-view="places"] .board-scroll.merged { display:block; }
-body[data-view="zones"] section.day,
-body[data-view="places"] section.day { display:none; }
+body[data-view="map"] section.day { display:none; }
 
 /* Flödesvy: kronologisk lista (mkal-stil) – separata lugna kort. Tid + platstagg
    till vänster, titel/arrangör/kategori till höger. Inga tidslinjer eller höjder. */
@@ -243,21 +174,56 @@ body[data-view="guide"] .event.short .ev-place { display:block; }
 body[data-view="guide"] .event.is-fav .act.fav { opacity:1; }
 body[data-view="guide"] section.day { display:none; }
 
-/* Tidslinje-vyer (Zon-band & Alla platser): egen kortbakgrund så korten inte
-   smälter ihop med vita kolumner och timlinjer; sekundära knappar visas först
-   vid hover, och tiden har högermarginal så ikonerna aldrig ligger över den. */
-body[data-view="zones"] .event,
-body[data-view="places"] .event { background:#f6efe1; border-color:var(--line2);
-  box-shadow:0 1px 3px rgba(0,0,0,.16); }
-body[data-view="zones"] .event:hover,
-body[data-view="places"] .event:hover { background:#fffaf0; box-shadow:0 5px 14px rgba(0,0,0,.22); }
-body[data-view="zones"] .event .t,
-body[data-view="places"] .event .t { padding-right:44px; }
-/* Favoritstjärnan visas alltid (inte bara vid hover) i tidslinje-vyerna. */
-body[data-view="zones"] .event.is-fav .act.fav,
-body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
+/* Kartvy: Leaflet-karta till vänster och en tät lista för vald plats till höger. */
+.map-view { display:none; padding:16px 24px 34px; }
+body[data-view="map"] .map-view { display:block; }
+body[data-view="map"] .guide-scroll.merged-guide,
+body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
+.map-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(300px,360px);
+  gap:14px; align-items:stretch; }
+.map-canvas { min-height:520px; height:calc(100vh - 250px); border:1px solid var(--line);
+  border-radius:10px; overflow:hidden; background:#e8edf0; }
+.map-fallback { height:100%; display:flex; align-items:center; justify-content:center;
+  padding:24px; color:var(--muted); font-weight:700; text-align:center; }
+.map-panel { min-height:520px; height:calc(100vh - 250px); overflow:auto; background:#fff;
+  border:1px solid var(--line); border-radius:10px; padding:12px; }
+.map-panel-head { position:sticky; top:0; z-index:2; background:#fff; padding-bottom:10px;
+  border-bottom:1px solid var(--line); }
+.map-panel h2 { margin:0 0 4px; font-size:1.05rem; }
+.map-count { color:var(--muted); font-size:.82rem; font-weight:700; }
+.map-places { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 12px; }
+.map-place { font:inherit; font-size:.78rem; font-weight:700; padding:5px 9px;
+  border:1px solid var(--line2); border-radius:999px; background:#fff; color:var(--muted);
+  cursor:pointer; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.map-place:hover { color:var(--ink); border-color:var(--header-bg); }
+.map-place.active { color:#fff; background:var(--header-bg); border-color:var(--header-bg); }
+.map-list { display:flex; flex-direction:column; gap:8px; }
+.map-event { display:grid; grid-template-columns:minmax(0,1fr) 34px; gap:8px; align-items:center;
+  border:1px solid var(--line); border-left:4px solid var(--header-bg); border-radius:8px;
+  background:#faf7f2; padding:7px 8px; }
+.map-event-main { min-width:0; display:flex; flex-direction:column; gap:2px; text-align:left;
+  border:0; background:transparent; padding:0; color:inherit; cursor:pointer; }
+.map-event-main:hover .map-event-title { text-decoration:underline; }
+.map-event-when { color:var(--muted); font-size:.76rem; font-weight:800; text-transform:capitalize; }
+.map-event-title { color:var(--ink); font-size:.86rem; font-weight:800; line-height:1.2; }
+.map-event-org { color:var(--muted); font-size:.78rem; font-weight:600; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; }
+.map-fav { width:32px; height:32px; border-radius:50%; border:1px solid var(--line2);
+  background:#fff; color:var(--muted); font-size:1.05rem; line-height:1; cursor:pointer; }
+.map-fav:hover { border-color:#d99a00; color:#7a5b00; }
+.map-fav.on { background:#e0a21a; border-color:#e0a21a; color:#fff; }
+.map-missing { margin-top:12px; padding:9px 10px; border:1px solid var(--line);
+  border-radius:8px; background:#faf7f2; color:var(--muted); font-size:.8rem; font-weight:700; }
+.map-missing[hidden] { display:none; }
+.map-empty { padding:16px 4px; color:var(--muted); font-style:italic; }
+.mv-marker { border:0; background:transparent; }
+.mv-marker span { width:34px; height:34px; border-radius:50%; display:flex; align-items:center;
+  justify-content:center; background:var(--header-bg); color:#fff; border:3px solid #fff;
+  box-shadow:0 3px 12px rgba(0,0,0,.32); font-size:.82rem; font-weight:900; }
+.mv-marker.active span { background:#d99a00; color:#2a2018; transform:scale(1.08); }
+.leaflet-container { font:inherit; }
 
-.modal-overlay { position:fixed; inset:0; z-index:50; display:flex; align-items:center;
+.modal-overlay { position:fixed; inset:0; z-index:2000; display:flex; align-items:center;
   justify-content:center; padding:24px; background:rgba(20,12,6,.55); backdrop-filter:blur(2px); }
 .modal-overlay[hidden] { display:none; }
 .modal { background:#fff; color:var(--ink); max-width:560px; width:100%; max-height:85vh;
@@ -276,6 +242,8 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
 .modal .m-desc { font-size:.95rem; line-height:1.5; }
 .modal .m-desc p { margin:0 0 .7em; }
 .modal .m-desc p.empty { color:var(--muted); font-style:italic; }
+.modal .m-maplinks { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.modal .m-maplinks[hidden] { display:none; }
 .modal .m-occurrences { margin-top:16px; border-top:1px solid var(--line2); padding-top:12px; }
 .modal .m-occurrences[hidden] { display:none; }
 .modal .m-occurrences h4 { margin:0 0 8px; font-size:.92rem; }
@@ -306,7 +274,7 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
 .modal .m-btn.fav.on { background:#fff7e0; border-color:#e6b400; color:#7a5b00; }
 .modal .m-btn.bought.on { background:#e8f8ee; border-color:#37b86e; color:#1b6b3c; }
 .modal .m-btn.hide.on { background:#fdecea; border-color:#e0796f; color:#8a2b1f; }
-#hidedlg.modal-overlay { z-index:80; }
+#hidedlg.modal-overlay { z-index:2100; }
 .modal.hidedlg { max-width:430px; }
 .modal.hidedlg .hd-msg { color:var(--ink); font-size:.95rem; line-height:1.5; margin:8px 0 2px; }
 .modal.hidedlg .hd-msg b { font-weight:700; }
@@ -329,7 +297,7 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
 .modal.sub .sub-help ol { margin:.5em 0 0; padding-left:1.25em; }
 .modal.sub .sub-help .sub-note { display:block; margin-top:.6em; font-style:italic; }
 
-.printview { position:fixed; inset:0; z-index:60; background:#fff; color:#1a1a1a;
+.printview { position:fixed; inset:0; z-index:2200; background:#fff; color:#1a1a1a;
   overflow:auto; padding:32px 40px 60px; }
 .printview[hidden] { display:none; }
 .printview .pv-bar { display:flex; flex-wrap:wrap; align-items:center; gap:12px;
@@ -360,5 +328,10 @@ body[data-view="places"] .event.is-fav .act.fav { opacity:1; }
   .printview { position:static; padding:0; }
   .printview .pv-actions { display:none !important; }
   @page { margin:16mm; }
+}
+@media (max-width:780px){
+  .map-layout { grid-template-columns:1fr; }
+  .map-canvas { height:58vh; min-height:360px; }
+  .map-panel { height:auto; max-height:none; min-height:0; }
 }
 @media (max-width:640px){ :root{ --axis-w:48px; } }

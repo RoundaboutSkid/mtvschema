@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Medeltidsveckan – schema</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>/*__MV_STYLES__*/</style>
 </head>
 <body>
@@ -27,6 +29,10 @@
       <div class="m-meta" id="m-meta"></div>
       <div class="m-badges" id="m-badges"></div>
       <div class="m-desc" id="m-desc"></div>
+      <div class="m-maplinks" id="m-maplinks" hidden>
+        <button type="button" class="m-btn" id="m-map">Visa på karta</button>
+        <a class="m-btn" id="m-directions" target="_blank" rel="noopener">Vägbeskrivning</a>
+      </div>
       <div class="m-occurrences" id="m-occurrences" hidden></div>
       <div class="m-actions">
         <button type="button" class="m-btn fav" id="m-fav">☆ Favorit</button>
