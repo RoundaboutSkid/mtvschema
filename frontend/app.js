@@ -127,6 +127,7 @@ function mvTicketIcon(cls) {
       "<button class='reset' id='printFav' title='Öppna en utskriftsvänlig lista över dina favoriter'>★ Skriv ut favoriter</button>" +
       "<button class='reset' id='icsFav' title='Ladda ner dina favoriter som en kalenderfil (.ics)'>📅 Lägg till i kalender</button>" +
       subBtn +
+      "<button class='reset' id='helpBtn' title='Kom igång – så använder du schemat'>❓ Hjälp</button>" +
       "</div>" +
       "</div>" +
       "<span class='count' id='count'></span>";
@@ -1711,3 +1712,40 @@ function mvTicketIcon(cls) {
     } else if (linkInput) { linkInput.select(); try { document.execCommand('copy'); done(); } catch (e) {} }
   });
 })();
+
+
+/* --------------------------------------------------------------------------
+ * HELP – kom-igång-hjälp för nya användare
+ *
+ * Öppnas via "❓ Hjälp" under Mer-knappen, och automatiskt EN gång vid första
+ * besöket (flaggan sparas i localStorage). Stängs med knapp, kryss, Esc eller
+ * klick utanför.
+ * ------------------------------------------------------------------------ */
+(function () {
+  const SEEN_KEY = 'mv_helpseen_v1';
+  const dlg = document.getElementById('helpdlg');
+  if (!dlg) return;
+  const btn = document.getElementById('helpBtn');
+  const xBtn = document.getElementById('help-x');
+  const okBtn = document.getElementById('help-ok');
+
+  function markSeen() { try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {} }
+  function seen() { try { return localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { return true; } }
+
+  function open() { dlg.hidden = false; markSeen(); }
+  function close() { dlg.hidden = true; }
+
+  if (btn) btn.addEventListener('click', open);
+  if (xBtn) xBtn.addEventListener('click', close);
+  if (okBtn) okBtn.addEventListener('click', close);
+  dlg.addEventListener('click', ev => { if (ev.target === dlg) close(); });
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape' && !dlg.hidden) close();
+  });
+
+  // Första besöket: visa hjälpen självmant (aldrig igen efter det).
+  if (!seen()) open();
+
+  window.MVHELP = { open: open, close: close };
+})();
+
