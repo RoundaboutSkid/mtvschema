@@ -14,7 +14,7 @@ header.top h1 { margin:0 0 4px; }
 header.top p { margin:0; color:var(--muted); max-width:72ch; font-size:.92rem; }
 
 .controlbar { position:sticky; top:0; z-index:1800; display:grid;
-  grid-template-columns:minmax(0,var(--search-max-w)) auto auto auto;
+  grid-template-columns:minmax(0,var(--search-max-w)) auto auto auto auto;
   justify-content:start; align-items:center; gap:6px;
   padding:8px 10px; background:rgba(250,247,241,.98); backdrop-filter:blur(8px);
   border-bottom:1px solid var(--line); }
@@ -51,6 +51,8 @@ button.reset { font:inherit; font-size:.8rem; font-weight:600; padding:6px 12px;
 .day-pop { grid-column:2; }
 .filter-pop { grid-column:3; }
 .more-pop { grid-column:4; }
+.help-btn { grid-column:5; }
+.help-btn::after { content:none; }
 .compact-toggle { display:inline-flex; align-items:center; justify-content:center;
   min-height:34px; padding:6px 10px; border:1px solid var(--line2); border-radius:8px;
   background:#fff; color:var(--ink); font:inherit; font-size:.78rem; font-weight:800;
@@ -370,11 +372,17 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
 .modal .m-btn.bought.on { background:#e8f8ee; border-color:#37b86e; color:#1b6b3c; }
 .modal .m-btn.hide.on { background:#fdecea; border-color:#e0796f; color:#8a2b1f; }
 #hidedlg.modal-overlay { z-index:2100; }
-.modal.hidedlg { max-width:430px; }#helpdlg.modal-overlay { z-index:85; }
+.modal.hidedlg { max-width:430px; }#helpdlg.modal-overlay { z-index:2200; }
 .modal.help { max-width:520px; }
 .modal.help .help-body { font-size:.92rem; line-height:1.55; }
-.modal.help .help-body section { margin:0 0 4px; }
-.modal.help .help-body h4 { margin:14px 0 4px; font-size:.98rem; color:var(--header-bg); }
+.modal.help .help-intro { margin:6px 0 10px; color:var(--muted); }
+.modal.help .help-sec { margin:0 0 8px; border:1px solid var(--line2); border-radius:10px;
+  background:#fff; }
+.modal.help .help-sec > summary { list-style:none; cursor:pointer; padding:9px 12px;
+  font-size:.95rem; font-weight:700; color:var(--header-bg); }
+.modal.help .help-sec > summary::-webkit-details-marker { display:none; }
+.modal.help .help-sec[open] > summary { border-bottom:1px solid var(--line); }
+.modal.help .help-sec-body { padding:8px 12px 2px; }
 .modal.help .help-body p { margin:0 0 .55em; }
 .modal.help .help-note { margin-top:14px; padding-top:10px; border-top:1px solid var(--line2);
   color:var(--muted); font-size:.84rem; }.modal.hidedlg .hd-msg { color:var(--ink); font-size:.95rem; line-height:1.5; margin:8px 0 2px; }

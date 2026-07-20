@@ -127,9 +127,9 @@ function mvTicketIcon(cls) {
       "<button class='reset' id='printFav' title='Öppna en utskriftsvänlig lista över dina favoriter'>★ Skriv ut favoriter</button>" +
       "<button class='reset' id='icsFav' title='Ladda ner dina favoriter som en kalenderfil (.ics)'>📅 Lägg till i kalender</button>" +
       subBtn +
-      "<button class='reset' id='helpBtn' title='Kom igång – så använder du schemat'>❓ Hjälp</button>" +
       "</div>" +
       "</div>" +
+      "<button type='button' class='compact-toggle help-btn' id='helpBtn' title='Kom igång – så använder du schemat' aria-label='Hjälp'>❓</button>" +
       "<span class='count' id='count'></span>";
 
     const dayPanel = tb.querySelector('#compactDayPanel');
@@ -1732,7 +1732,12 @@ function mvTicketIcon(cls) {
   function markSeen() { try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {} }
   function seen() { try { return localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { return true; } }
 
-  function open() { dlg.hidden = false; markSeen(); }
+  function open() {
+    // Visa bara första steget uppfällt så rutan inte känns överväldigande.
+    const secs = dlg.querySelectorAll('.help-sec');
+    secs.forEach((s, i) => { s.open = i === 0; });
+    dlg.hidden = false; markSeen();
+  }
   function close() { dlg.hidden = true; }
 
   if (btn) btn.addEventListener('click', open);
