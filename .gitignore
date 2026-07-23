@@ -8,6 +8,9 @@ venv/
 # Node / Cloudflare Wrangler (i worker/)
 node_modules/
 .wrangler/
+
+# Deploy-mapp för Cloudflare Pages (skapas av deploy_pages.sh)
+.pages_deploy/
 .dev.vars
 *.log
 

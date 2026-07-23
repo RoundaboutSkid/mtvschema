@@ -48,6 +48,19 @@ python build_schedule.py
 
 Öppna sedan `medeltidsveckan_output/medeltidsveckan_schema.html` i webbläsaren.
 
+Steg 3 – *valfritt* – publicera sidan till Cloudflare Pages
+(https://mtvschema.pages.dev):
+
+```bash
+./deploy_pages.sh
+```
+
+Skriptet bygger om schemat, lägger HTML-filen i `.pages_deploy/` och deployar
+den till Pages-projektet. Kör med `--no-build` för att publicera senaste bygget
+utan att bygga om. Observera att kalender-prenumerationens Worker deployas
+separat (`cd worker && npx wrangler deploy`) – det behövs bara när programdatan
+eller worker-koden ändrats.
+
 *Valfritt* – ta även med det inofficiella programmet (imtv.se). Kör det här
 **innan** steg 2, så slås det ihop automatiskt:
 
