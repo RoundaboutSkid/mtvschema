@@ -211,6 +211,7 @@ function mvTicketIcon(cls) {
     if (ev.status) n.setAttribute('data-status', ev.status);
     if (ev.ticket) n.setAttribute('data-ticket', ev.ticket);
     if (ev.desc) n.setAttribute('data-desc', ev.desc);
+    if (ev.endAssumed) n.setAttribute('data-end-assumed', '1');
     if (ev.lat != null && ev.lng != null) {
       n.setAttribute('data-lat', ev.lat);
       n.setAttribute('data-lng', ev.lng);
@@ -902,6 +903,7 @@ function mvTicketIcon(cls) {
   const mMapLinks = document.getElementById('m-maplinks');
   const mMap = document.getElementById('m-map');
   const mDirections = document.getElementById('m-directions');
+  const mApple = document.getElementById('m-apple');
   const mOccurrences = document.getElementById('m-occurrences');
   const mTicket = document.getElementById('m-ticket');
   const mFav = document.getElementById('m-fav');
@@ -1032,6 +1034,7 @@ function mvTicketIcon(cls) {
       addBadge(cat, el.dataset.color ? '#' + el.dataset.color : null);
     }
     if (el.dataset.status) addBadge(el.dataset.status, '#8a6d3b', el.dataset.ticket || null);
+    if (el.dataset.endAssumed) addBadge('Sluttid uppskattad \u2013 kan sluta tidigare', '#8a6d3b');
 
     mDesc.textContent = '';
     const desc = (el.dataset.desc || '').trim();
@@ -1056,10 +1059,12 @@ function mvTicketIcon(cls) {
       const coords = encodeURIComponent(lat + ',' + lng);
       currentMapEvent = el;
       mDirections.href = 'https://www.google.com/maps/dir/?api=1&destination=' + coords;
+      if (mApple) mApple.href = 'https://maps.apple.com/?daddr=' + coords;
       mMapLinks.hidden = false;
     } else if (mMapLinks) {
       currentMapEvent = null;
       if (mDirections) mDirections.removeAttribute('href');
+      if (mApple) mApple.removeAttribute('href');
       mMapLinks.hidden = true;
     }
 
@@ -1150,6 +1155,7 @@ function mvTicketIcon(cls) {
     out.sort((a, b) =>
       a.venue.localeCompare(b.venue, 'sv') ||
       eventSort(a.events[0], b.events[0]));
+    out.forEach((g, i) => { g.idx = i + 1; });
     missingCount = missing;
     return out;
   }
@@ -1174,7 +1180,7 @@ function mvTicketIcon(cls) {
   function markerIcon(g, active) {
     return L.divIcon({
       className: 'mv-marker' + (active ? ' active' : ''),
-      html: '<span>' + g.events.length + '</span>',
+      html: '<span>' + g.idx + '</span>',
       iconSize: [34, 34],
       iconAnchor: [17, 17],
       popupAnchor: [0, -18],
@@ -1191,7 +1197,7 @@ function mvTicketIcon(cls) {
         title: g.venue,
       }).addTo(layer);
       const tip = document.createElement('span');
-      tip.textContent = g.venue + ' (' + g.events.length + ')';
+      tip.textContent = g.idx + '. ' + g.venue + ' (' + g.events.length + ')';
       marker.bindTooltip(tip);
       marker.on('click', () => select(g.key, true));
       bounds.push([g.lat, g.lng]);
@@ -1209,7 +1215,7 @@ function mvTicketIcon(cls) {
       btn.type = 'button';
       btn.className = 'map-place';
       btn.classList.toggle('active', g.key === selectedKey);
-      btn.textContent = g.venue + ' (' + g.events.length + ')';
+      btn.textContent = g.idx + '. ' + g.venue + ' (' + g.events.length + ')';
       btn.addEventListener('click', () => {
         placesOpen = false;
         select(g.key, true);
@@ -1299,11 +1305,35 @@ function mvTicketIcon(cls) {
   function renderPanel() {
     const selected = groups.find(g => g.key === selectedKey);
     const total = groups.reduce((sum, g) => sum + g.events.length, 0);
-    if (titleEl) titleEl.textContent = selected ? selected.venue : 'Karta';
+    if (titleEl) titleEl.textContent = selected ? (selected.idx + '. ' + selected.venue) : 'Karta';
     if (countEl) {
-      countEl.textContent = groups.length
-        ? groups.length + ' platser · ' + total + ' programpunkter'
-        : 'Inga programpunkter';
+      countEl.textContent = '';
+      if (groups.length) {
+        countEl.appendChild(document.createTextNode(
+          groups.length + ' platser · ' + total + ' programpunkter'));
+        if (selected) {
+          const dir = document.createElement('span');
+          dir.className = 'map-directions';
+          const coords = selected.lat + ',' + selected.lng;
+          const gl = document.createElement('a');
+          gl.href = 'https://www.google.com/maps/dir/?api=1&destination=' + coords;
+          gl.target = '_blank';
+          gl.rel = 'noopener';
+          gl.textContent = 'Google Maps';
+          const al = document.createElement('a');
+          al.href = 'https://maps.apple.com/?daddr=' + coords;
+          al.target = '_blank';
+          al.rel = 'noopener';
+          al.textContent = 'Apple Kartor';
+          dir.appendChild(document.createTextNode('Vägbeskrivning: '));
+          dir.appendChild(gl);
+          dir.appendChild(document.createTextNode(' · '));
+          dir.appendChild(al);
+          countEl.appendChild(dir);
+        }
+      } else {
+        countEl.textContent = 'Inga programpunkter';
+      }
     }
     if (listEl) {
       listEl.textContent = '';

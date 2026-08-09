@@ -84,7 +84,8 @@ def _event_record(p: Placement, day: DayLayout) -> dict:
     color = category_color(e.category)
     top = _pos(e.start_min - day.day_start_min)
     height = _pos(e.end_min - e.start_min)
-    time_txt = f"{e.start}\u2013{e.end}"
+    end_assumed = bool(e.duration_source) and e.duration_source != "source"
+    time_txt = f"{e.start}\u2013ca {e.end}" if end_assumed else f"{e.start}\u2013{e.end}"
     search = " ".join([e.title, e.organizer, e.venue, e.category, e.status, e.description]).lower()
 
     rec: dict[str, object] = {
@@ -95,6 +96,8 @@ def _event_record(p: Placement, day: DayLayout) -> dict:
         "cat": e.category or "", "catKey": e.category if e.category else NO_CATEGORY,
         "search": search,
     }
+    if end_assumed:
+        rec["endAssumed"] = True
     if e.organizer:
         rec["org"] = e.organizer
         rec["orgShow"] = e.organizer.strip().lower() != e.venue.strip().lower()
