@@ -22,6 +22,8 @@ STAGE=".pages_deploy"          # fast mapp i projektet (gitignorerad), inte /tmp
 PROJECT="mtvschema"
 
 if [[ "$1" != "--no-build" ]]; then
+  echo "== Applicerar manuella rättelser =="
+  "$PYTHON" apply_corrections.py
   echo "== Bygger om schemat =="
   "$PYTHON" build_schedule.py --no-excel
 fi

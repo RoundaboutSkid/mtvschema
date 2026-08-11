@@ -1,0 +1,87 @@
+name: Uppdatera schemat
+
+# Hämtar programmet från källorna, applicerar manuella rättelser,
+# bygger om HTML-sidan och deployar till Cloudflare Pages + Worker.
+#
+# Körs automatiskt varje morgon kl 06:00 svensk sommartid (04:00 UTC)
+# och kan även startas manuellt via fliken Actions -> "Run workflow".
+#
+# Kräver repo-secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-schedule
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hämta koden
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Node (wrangler)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Installera Python-beroenden
+        run: pip install -r requirements.txt
+
+      - name: Hämta officiella programmet
+        run: python fetch_programme.py
+
+      - name: Hämta inofficiella programmet
+        run: python fetch_inofficial.py
+
+      - name: Applicera manuella rättelser
+        run: python apply_corrections.py
+
+      - name: Bygg schemat
+        run: python build_schedule.py --no-excel
+
+      - name: Förbered Pages-mapp
+        run: |
+          mkdir -p .pages_deploy
+          cp medeltidsveckan_output/medeltidsveckan_schema.html .pages_deploy/index.html
+          cp medeltidsveckan_output/medeltidsveckan_schema.html .pages_deploy/medeltidsveckan_schema.html
+
+      - name: Deploya till Cloudflare Pages
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npm ci
+          npx wrangler pages deploy ../.pages_deploy --project-name mtvschema --commit-dirty=true
+
+      - name: Deploya Worker (kalender-prenumeration)
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
+
+      - name: Committa uppdaterad data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add medeltidsveckan_output/ worker/src/programme.js
+          if git diff --cached --quiet; then
+            echo "Inga dataändringar."
+          else
+            git commit -m "Automatisk uppdatering av programdata ($(date -u +%Y-%m-%d))"
+            git push
+          fi

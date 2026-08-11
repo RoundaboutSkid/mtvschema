@@ -1,0 +1,16 @@
+{
+  "_kommentar": [
+    "Manuella rättelser som appliceras efter varje hämtning från källorna,",
+    "så att handfixar överlever automatiska uppdateringar.",
+    "Varje post: 'match' (fält som måste stämma exakt) + 'set' (fält som skrivs över).",
+    "Matchbara fält: title, date, venue, start. Sättbara: start, end, venue, ticket_url, description m.fl.",
+    "Kör: python3 apply_corrections.py  (görs automatiskt av GitHub Actions och deploy_pages.sh)"
+  ],
+  "corrections": [
+    {
+      "match": { "title": "Midnattssagor med Fae" },
+      "set": { "start": "23:55", "end": "23:59", "duration_source": "source" },
+      "varfor": "Källan anger tid över midnatt; flyttad till sen kväll så den hamnar rätt dag."
+    }
+  ]
+}

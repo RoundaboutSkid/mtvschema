@@ -13,20 +13,20 @@
 # (datafilen rörs inte – inget behöver hämtas om)
 
 # --- Heldagsöppet / platsen i sig (aktiva som standard) ---
-Visby domkyrka Sankta Maria
-Forum Vulgaris, marknadens hjärta
+# Visby domkyrka Sankta Maria
+# Forum Vulgaris, marknadens hjärta
 
 # --- Långa, återkommande programpunkter – avkommentera för att dölja ---
-Drakens Näste
-Gantarnas läger
-Hantverkshörna
-Historisk sjukamp
-M.P. Bagpipes, säckpipor från medeltid till nutid
-The Witch’s Hut – A magical escape room
-#allakansyiläder Sy dina egna skor!
-Drop in: Snoddcafé
-GÖR DINA EGNA NATURLIGA HUDVÅRDSPRODUKTER
-GÖR DIN EGEN TVÅL FRÅN GRUNDEN
-Naturliga skäggvårdsprodukter
-Skokurs Sy medeltida skor
-Mat och dryck i medeltidens Visby
+# Drakens Näste
+# Gantarnas läger
+# Hantverkshörna
+# Historisk sjukamp
+# M.P. Bagpipes, säckpipor från medeltid till nutid
+# The Witch’s Hut – A magical escape room
+# #allakansyiläder Sy dina egna skor!
+# Drop in: Snoddcafé
+# GÖR DINA EGNA NATURLIGA HUDVÅRDSPRODUKTER
+# GÖR DIN EGEN TVÅL FRÅN GRUNDEN
+# Naturliga skäggvårdsprodukter
+# Skokurs Sy medeltida skor
+# Mat och dryck i medeltidens Visby
