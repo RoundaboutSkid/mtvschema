@@ -395,6 +395,7 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
 .modal .m-btn[hidden] { display:none; }
 .modal a.m-btn { text-decoration:none; }
 .modal.sub .sub-url { display:flex; gap:8px; margin:14px 0 4px; }
+.modal.sub .sub-subtitle { margin:18px 0 2px; padding-top:12px; border-top:1px solid #e5decf; font-size:.95em; }
 .modal.sub .sub-url input { flex:1; min-width:0; font:inherit; font-size:.82rem;
   padding:8px 10px; border:1px solid var(--line2); border-radius:8px;
   background:#faf7f2; color:var(--ink); }

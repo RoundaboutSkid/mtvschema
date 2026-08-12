@@ -403,6 +403,7 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
 .modal .m-btn[hidden] { display:none; }
 .modal a.m-btn { text-decoration:none; }
 .modal.sub .sub-url { display:flex; gap:8px; margin:14px 0 4px; }
+.modal.sub .sub-subtitle { margin:18px 0 2px; padding-top:12px; border-top:1px solid #e5decf; font-size:.95em; }
 .modal.sub .sub-url input { flex:1; min-width:0; font:inherit; font-size:.82rem;
   padding:8px 10px; border:1px solid var(--line2); border-radius:8px;
   background:#faf7f2; color:var(--ink); }
@@ -519,6 +520,12 @@ body[data-view="flow"] .guide-scroll.merged-guide { display:none; }
       </div>
       <div class="m-actions">
         <a class="m-btn primary" id="sub-open" href="#">Öppna i kalender</a>
+      </div>
+      <h4 class="sub-subtitle">Använd på annan enhet eller webbläsare</h4>
+      <div class="m-meta">Öppna länken nedan på din andra enhet så delar ni samma favoriter.</div>
+      <div class="sub-url">
+        <input id="pair-link" readonly aria-label="Kopplingslänk">
+        <button type="button" class="m-btn" id="pair-copy">Kopiera</button>
       </div>
       <div class="sub-help">
         <strong>Apple Kalender / Outlook:</strong> klicka <em>Öppna i kalender</em> ovan.<br>
@@ -1301,6 +1308,20 @@ function mvTicketIcon(cls) {
     hidden.clear(); HT.clear(); save(); syncAll(); notify();
   }
 
+  // Slå ihop favoriter/köp från en annan enhet (kopplingslänk). Union –
+  // inget lokalt tas bort. Returnerar antal nya id:n som lades till.
+  function importSelection(sel){
+    let added = 0;
+    (sel && sel.favs || []).forEach(id => {
+      if (typeof id === 'string' && !favs.has(id)) { favs.add(id); added++; }
+    });
+    (sel && sel.bought || []).forEach(id => {
+      if (typeof id === 'string' && !bought.has(id)) { bought.add(id); favs.add(id); added++; }
+    });
+    if (added) { save(); syncAll(); notify(); }
+    return added;
+  }
+
   window.MV = {
     isFav: id => favs.has(id),
     isBought: id => bought.has(id),
@@ -1311,6 +1332,7 @@ function mvTicketIcon(cls) {
     toggleBought: toggleBought,
     requestHide: requestHide,
     clearHidden: clearHidden,
+    importSelection: importSelection,
     sync: sync, syncAll: syncAll,
     onChange: fn => listeners.push(fn),
   };
@@ -2263,6 +2285,18 @@ function mvTicketIcon(cls) {
   if (!endpoint || !window.MV) { if (btn) btn.hidden = true; return; }
 
   const UID_KEY = 'mv_uid_v1';
+  // Kopplingslänk: öppnas sidan med #koppla=<id> tar vi över det id:t så att
+  // båda webbläsarna delar samma sparade favoriter framledes.
+  let pairedUid = '';
+  try {
+    const m = (location.hash || '').match(/[#&]koppla=([A-Za-z0-9_-]{8,100})/);
+    if (m) {
+      pairedUid = m[1];
+      try { localStorage.setItem(UID_KEY, pairedUid); } catch (e) {}
+      // Städa adressfältet så länken inte delas vidare av misstag.
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    }
+  } catch (e) {}
   function getUid() {
     let v = '';
     try { v = localStorage.getItem(UID_KEY) || ''; } catch (e) {}
@@ -2309,15 +2343,34 @@ function mvTicketIcon(cls) {
   function scheduleSave() { clearTimeout(timer); timer = setTimeout(() => save(false), 1000); }
   window.MV.onChange(scheduleSave);
 
+  // Nykopplad enhet: hämta favoriterna från servern och slå ihop med lokala.
+  if (pairedUid) {
+    fetch(endpoint + '/load?u=' + encodeURIComponent(U))
+      .then(r => r.ok ? r.json() : null)
+      .then(sel => {
+        if (!sel) return;
+        const n = window.MV.importSelection(sel);
+        // Skicka upp unionen så båda enheterna har samma lista.
+        save(true);
+        if (n && window.alert) alert('Enheten är kopplad! ' + n + ' favoriter hämtades hit.');
+        else if (window.alert) alert('Enheten är kopplad! Dina favoriter synkas nu mellan enheterna.');
+      })
+      .catch(() => {});
+  }
+
   const modal = document.getElementById('submodal');
   const linkInput = document.getElementById('sub-link');
   const copyBtn = document.getElementById('sub-copy');
   const openLink = document.getElementById('sub-open');
   const closeBtn = document.getElementById('sub-close');
+  const pairInput = document.getElementById('pair-link');
+  const pairCopy = document.getElementById('pair-copy');
+  const pairUrl = location.origin + location.pathname + '#koppla=' + encodeURIComponent(U);
 
   function open() {
     if (linkInput) linkInput.value = subUrl;
     if (openLink) openLink.href = webcal;
+    if (pairInput) pairInput.value = pairUrl;
     const n = favIds().length;
     if (!n) {
       setStatus('Du har inga favoriter än – markera några med stjärnan först.', 'warn');
@@ -2344,6 +2397,12 @@ function mvTicketIcon(cls) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(done, () => { if (linkInput) linkInput.select(); });
     } else if (linkInput) { linkInput.select(); try { document.execCommand('copy'); done(); } catch (e) {} }
+  });
+  if (pairCopy) pairCopy.addEventListener('click', () => {
+    const done = () => { pairCopy.textContent = 'Kopierad!'; setTimeout(() => { pairCopy.textContent = 'Kopiera'; }, 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(pairUrl).then(done, () => { if (pairInput) pairInput.select(); });
+    } else if (pairInput) { pairInput.select(); try { document.execCommand('copy'); done(); } catch (e) {} }
   });
 })();
 

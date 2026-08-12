@@ -697,6 +697,20 @@ function mvTicketIcon(cls) {
     hidden.clear(); HT.clear(); save(); syncAll(); notify();
   }
 
+  // Slå ihop favoriter/köp från en annan enhet (kopplingslänk). Union –
+  // inget lokalt tas bort. Returnerar antal nya id:n som lades till.
+  function importSelection(sel){
+    let added = 0;
+    (sel && sel.favs || []).forEach(id => {
+      if (typeof id === 'string' && !favs.has(id)) { favs.add(id); added++; }
+    });
+    (sel && sel.bought || []).forEach(id => {
+      if (typeof id === 'string' && !bought.has(id)) { bought.add(id); favs.add(id); added++; }
+    });
+    if (added) { save(); syncAll(); notify(); }
+    return added;
+  }
+
   window.MV = {
     isFav: id => favs.has(id),
     isBought: id => bought.has(id),
@@ -707,6 +721,7 @@ function mvTicketIcon(cls) {
     toggleBought: toggleBought,
     requestHide: requestHide,
     clearHidden: clearHidden,
+    importSelection: importSelection,
     sync: sync, syncAll: syncAll,
     onChange: fn => listeners.push(fn),
   };
@@ -1659,6 +1674,18 @@ function mvTicketIcon(cls) {
   if (!endpoint || !window.MV) { if (btn) btn.hidden = true; return; }
 
   const UID_KEY = 'mv_uid_v1';
+  // Kopplingslänk: öppnas sidan med #koppla=<id> tar vi över det id:t så att
+  // båda webbläsarna delar samma sparade favoriter framledes.
+  let pairedUid = '';
+  try {
+    const m = (location.hash || '').match(/[#&]koppla=([A-Za-z0-9_-]{8,100})/);
+    if (m) {
+      pairedUid = m[1];
+      try { localStorage.setItem(UID_KEY, pairedUid); } catch (e) {}
+      // Städa adressfältet så länken inte delas vidare av misstag.
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    }
+  } catch (e) {}
   function getUid() {
     let v = '';
     try { v = localStorage.getItem(UID_KEY) || ''; } catch (e) {}
@@ -1705,15 +1732,34 @@ function mvTicketIcon(cls) {
   function scheduleSave() { clearTimeout(timer); timer = setTimeout(() => save(false), 1000); }
   window.MV.onChange(scheduleSave);
 
+  // Nykopplad enhet: hämta favoriterna från servern och slå ihop med lokala.
+  if (pairedUid) {
+    fetch(endpoint + '/load?u=' + encodeURIComponent(U))
+      .then(r => r.ok ? r.json() : null)
+      .then(sel => {
+        if (!sel) return;
+        const n = window.MV.importSelection(sel);
+        // Skicka upp unionen så båda enheterna har samma lista.
+        save(true);
+        if (n && window.alert) alert('Enheten är kopplad! ' + n + ' favoriter hämtades hit.');
+        else if (window.alert) alert('Enheten är kopplad! Dina favoriter synkas nu mellan enheterna.');
+      })
+      .catch(() => {});
+  }
+
   const modal = document.getElementById('submodal');
   const linkInput = document.getElementById('sub-link');
   const copyBtn = document.getElementById('sub-copy');
   const openLink = document.getElementById('sub-open');
   const closeBtn = document.getElementById('sub-close');
+  const pairInput = document.getElementById('pair-link');
+  const pairCopy = document.getElementById('pair-copy');
+  const pairUrl = location.origin + location.pathname + '#koppla=' + encodeURIComponent(U);
 
   function open() {
     if (linkInput) linkInput.value = subUrl;
     if (openLink) openLink.href = webcal;
+    if (pairInput) pairInput.value = pairUrl;
     const n = favIds().length;
     if (!n) {
       setStatus('Du har inga favoriter än – markera några med stjärnan först.', 'warn');
@@ -1740,6 +1786,12 @@ function mvTicketIcon(cls) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(done, () => { if (linkInput) linkInput.select(); });
     } else if (linkInput) { linkInput.select(); try { document.execCommand('copy'); done(); } catch (e) {} }
+  });
+  if (pairCopy) pairCopy.addEventListener('click', () => {
+    const done = () => { pairCopy.textContent = 'Kopierad!'; setTimeout(() => { pairCopy.textContent = 'Kopiera'; }, 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(pairUrl).then(done, () => { if (pairInput) pairInput.select(); });
+    } else if (pairInput) { pairInput.select(); try { document.execCommand('copy'); done(); } catch (e) {} }
   });
 })();
 

@@ -115,6 +115,20 @@ export default {
       });
     }
 
+    // --- Read back a user's selection (device pairing) --------------------
+    if (url.pathname === '/load' && request.method === 'GET') {
+      const u = url.searchParams.get('u') || '';
+      if (!UID_RE.test(u)) return json({ error: 'bad uid' }, 400);
+      if (!env.MV_KV) return json({ error: 'storage not configured' }, 500);
+      const raw = await env.MV_KV.get('u:' + u);
+      let stored = null;
+      if (raw) { try { stored = JSON.parse(raw); } catch (e) { stored = null; } }
+      return json({
+        favs: (stored && stored.favs) || [],
+        bought: (stored && stored.bought) || [],
+      });
+    }
+
     if (url.pathname === '/' && request.method === 'GET') {
       return new Response(
         'Medeltidsveckan – favoritkalender.\n' +
